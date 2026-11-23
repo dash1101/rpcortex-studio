@@ -1,0 +1,4 @@
+[:] Installed packages:
+  novad1           1.8.0   
+  greet            1.0     
+  websearch        2.2     

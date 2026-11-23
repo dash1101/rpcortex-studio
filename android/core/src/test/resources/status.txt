@@ -1,0 +1,14 @@
+Uptime: 51m 10s
+--rpctui-mem--
+  Total : 319 KB
+  Used  : 185 KB  (58%)
+  Free  : 134 KB
+  Largest block : 73 KB
+  For packages  : 23 KB  (stacks and heaps held per task)
+
+  Reserved before the heap : 186 KB
+  the network buffers, Bluetooth, the editor and the log ring; fixed at build time, not allocated
+--rpctui-df--
+  Total : 1792 KB
+  Used  : 948 KB  (52%)
+  Free  : 844 KB

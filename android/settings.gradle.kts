@@ -13,3 +13,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "rpcortex-studio-android"
 include(":core")
+include(":app")

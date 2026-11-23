@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### New
+
+- RPCortex Studio for Android: plug a board into a phone or tablet over USB and get
+  the device and its health, files both ways (each one checked with SHA-256),
+  packages from the repository, the firmware and an over-the-air update, and a
+  command line, in Orbit's themes, with the board's sudo asked for when it is
+  needed. The link client is a Kotlin port of this one, held to the same mock
+  device in its tests and run against a Pico 2 W; the app has been run against a
+  board through an emulator. Its USB driver has not yet run on a phone.
+
 ## v1.0.1, 2026-11-23
 
 ### Fixed

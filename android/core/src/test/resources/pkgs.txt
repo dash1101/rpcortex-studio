@@ -1,0 +1,6 @@
+PKGS_BEGIN
+OS:v2.0.676-beta:pico2_w
+PKG:novad1:1.8.0
+PKG:greet:1.0
+PKG:websearch:2.2
+PKGS_END

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The RPCortex mark (assets/icon.svg), with its skew baked into the coordinates:
+     a vector drawable cannot skew. Scaled into the adaptive icon's safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="256" android:viewportHeight="256">
+    <group android:scaleX="0.62" android:scaleY="0.62" android:translateX="38" android:translateY="40">
+        <path android:fillColor="#F7262F" android:pathData="M196,42 L230,42 L214,76 L180,76Z"/>
+        <path android:fillColor="#FFFFFF" android:pathData="M121.8,101.34Q132.67,101.34 138.32,97.3Q143.97,93.25 146.11,84Q148.22,74.84 144.42,70.88Q140.61,66.93 129.74,66.93L115.19,66.93L107.24,101.34ZM101.73,125.24L90.01,176L55.42,176L86.38,41.86L139.21,41.86Q165.72,41.86 176.02,50.76Q186.32,59.65 181.88,78.88Q178.81,92.18 170.41,100.71Q162.02,109.25 148.15,113.29Q154.87,114.91 159.17,120.61Q163.47,126.32 166.54,137.91L176.53,176L139.69,176L131.03,142.67Q128.41,132.61 124.19,128.92Q119.96,125.24 111.52,125.24Z"/>
+        <path android:fillColor="#F7262F" android:pathData="M46.75,196 L196.75,196 L193.98,208 L43.98,208Z"/>
+        <path android:fillColor="#2563FF" android:pathData="M43.06,212 L193.06,212 L190.29,224 L40.29,224Z"/>
+        <path android:fillColor="#A31FF0" android:pathData="M39.36,228 L189.36,228 L186.59,240 L36.59,240Z"/>
+    </group>
+</vector>

@@ -7,7 +7,7 @@ so it is a real connection and not a wrapper that types commands: files move
 both ways with a SHA-256 check, commands come back with their exit status, and a
 board with no network of its own can borrow this computer's connection.
 
-Two ways to use it:
+Two ways to use it on a computer, and an app for Android ([below](#on-android)):
 
 - **`rpcortex-studio`** with nothing after it opens the full-screen app (`rpc
   tui`): the device, its files, packages, firmware, logs and tasks, and a
@@ -41,6 +41,24 @@ from a checkout:
 pip install pyserial
 python3 rpc.py info          # or: python3 -m rpctool info
 ```
+
+## On Android
+
+The same connection, from a phone or tablet: the device and its health, files both
+ways, packages, the firmware, and a command line, in Orbit's themes. Plug the board
+into the phone's USB-C port (or through a USB OTG adapter) and Android offers to
+open the app; it powers the board too.
+
+Each release has `rpcortex-studio-android.apk`, listed in `SHA256SUMS` with the rest.
+It needs Android 8.0 or later. The app talks to the board with its own small USB
+serial driver, since Android has none an app can use; the rest of it is the same
+link protocol client as here, in Kotlin (`android/core`), tested against the same
+mock device and against a real board.
+
+Building it: `cd android && ./gradlew :app:assembleDebug` (needs the Android SDK;
+`android/local.properties` names it). `./gradlew :core:test` runs the link client's
+tests on any computer, with Python for the mock device; with `RPC_PORT` (and
+`RPC_PASSWORD`) set they also drive a real board on that serial port.
 
 ## Finding the device
 

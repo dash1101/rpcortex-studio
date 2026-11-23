@@ -47,8 +47,42 @@ jobs:
         run: ./dist/${{ matrix.file }} --version
       - uses: actions/upload-artifact@v4
         with: { name: "${{ matrix.file }}", path: "dist/${{ matrix.file }}" }
+  android:
+    # The Android app: the link client's tests, then a release APK signed with the
+    # app's key. Without the signing secrets there is no APK in the release (an
+    # APK signed with a throwaway key could never be updated in place).
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "17" }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Link client tests (against Studio's mock device)
+        working-directory: android
+        run: ./gradlew --no-daemon :core:test
+      - name: Signed release APK
+        working-directory: android
+        env:
+          KS_B64: ${{ secrets.STUDIO_KEYSTORE_B64 }}
+          STUDIO_KEYSTORE_PASSWORD: ${{ secrets.STUDIO_KEYSTORE_PASSWORD }}
+          STUDIO_KEY_ALIAS: ${{ secrets.STUDIO_KEY_ALIAS }}
+          STUDIO_KEY_PASSWORD: ${{ secrets.STUDIO_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KS_B64" ]; then
+            echo "::warning::No signing key in the repository secrets; this release has no Android app."
+            exit 0
+          fi
+          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/studio.jks"
+          export STUDIO_KEYSTORE="$RUNNER_TEMP/studio.jks"
+          ./gradlew --no-daemon :app:assembleRelease
+          mkdir -p ../dist
+          cp app/build/outputs/apk/release/app-release.apk ../dist/rpcortex-studio-android.apk
+          "$ANDROID_HOME"/build-tools/*/apksigner verify --print-certs ../dist/rpcortex-studio-android.apk | head -3
+      - uses: actions/upload-artifact@v4
+        with: { name: rpcortex-studio-android.apk, path: dist/rpcortex-studio-android.apk, if-no-files-found: ignore }
   publish:
-    needs: build
+    needs: [build, android]
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
