@@ -326,6 +326,8 @@ class TestStopping(BridgeBase):
         self.assertEqual(seen["early"], 0, "the host sent before the device acknowledged")
 
 
+@unittest.skipIf(os.name == "nt", "feeds keys through a pipe to the POSIX key reader; "
+                 "on Windows rpc term reads the console with msvcrt instead")
 class TestTerminal(BridgeBase):
     def _term(self, keys, wait_for, timeout=20.0, policy=None):
         """Run rpc term against the mock: type `keys`, wait until `wait_for`

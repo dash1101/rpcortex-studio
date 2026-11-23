@@ -158,7 +158,7 @@ class Worker(threading.Thread):
         self.current = None
         self.terminal = False
         self._want_term = None               # True: enter, False: leave
-        self._stop = threading.Event()
+        self._halt = threading.Event()   # not _stop: Thread has its own _stop, which join() calls on Python 3.12 and older
         self._hold = False                   # do not reconnect (flashing, waiting for an answer)
         self._next_try = 0.0
         self._last_io = 0.0
@@ -215,7 +215,7 @@ class Worker(threading.Thread):
         self._next_try = 0.0
 
     def stop(self):
-        self._stop.set()
+        self._halt.set()
 
     # --- events ---------------------------------------------------------------
 
@@ -236,7 +236,7 @@ class Worker(threading.Thread):
     def _ask(self, kind, text, masked=False, default=""):
         box = queue.Queue(1)
         self._post("ask", kind, text, masked, default, box.put)
-        while not self._stop.is_set():
+        while not self._halt.is_set():
             try:
                 return box.get(timeout=0.2)
             except queue.Empty:
@@ -339,7 +339,7 @@ class Worker(threading.Thread):
 
     def run(self):
         try:
-            while not self._stop.is_set():
+            while not self._halt.is_set():
                 self._tick()
         finally:
             if self.dev is not None:

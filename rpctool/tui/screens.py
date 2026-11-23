@@ -3,6 +3,7 @@ anything for the device goes to the worker as a job (App.submit)."""
 import datetime
 import os
 import posixpath
+import re
 import shutil
 import time
 
@@ -1169,7 +1170,9 @@ class FirmwareScreen(Screen):
     def _flash(self, url, sha, ver):
         app = self.app
         flasher = app.flasher or _fw.Flasher()
-        name = posixpath.basename(url)
+        # A URL, or a path on this computer (a local release folder): either
+        # separator, so a Windows path does not become the whole file name.
+        name = re.split(r"[\\/]", url.rstrip("/\\"))[-1] or "firmware.uf2"
 
         def run(dev, job):
             data, verified = _fw.download_uf2(

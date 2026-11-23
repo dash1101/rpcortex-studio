@@ -2,6 +2,7 @@
 import hashlib
 import json
 import os
+import pathlib
 import shutil
 import sys
 import tempfile
@@ -206,7 +207,7 @@ class TestPutGet(CliCase):
 
     def test_fetch_from_a_url(self):
         src = self.local("served file.txt", b"over http")
-        url = "file://" + src.replace(os.sep, "/").replace(" ", "%20")
+        url = pathlib.Path(src).as_uri()          # file:///C:/... on Windows, not file://C:/...
         rc, _, err = self.rpc("fetch", url)
         self.assertEqual(rc, 0, err)
         self.assertEqual(self.dev.fs.files["/served file.txt"], b"over http")

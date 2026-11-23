@@ -29,4 +29,4 @@ jobs:
       - name: Tests
         shell: bash
         env: { RPCORTEX_DIR: "${{ github.workspace }}/rpcortex" }
-        run: python -m unittest discover -s tests -v 2>&1 | tail -40
+        run: python -m unittest discover -s tests -v
