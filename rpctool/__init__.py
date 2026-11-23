@@ -6,7 +6,7 @@
 
 The protocol is LINK.md at the root of the RPCortex v2 repository.
 """
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 
 from .errors import (DeviceGone, DeviceTimeout, DigestMismatch, LinkError,  # noqa: F401
                      LoginFailed, LoginRequired, NotSupported, ProtocolError, RpcError)
