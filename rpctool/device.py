@@ -66,6 +66,7 @@ class Device(object):
         # string or a callable that asks. Asked for once, when the device first
         # says a request needs it, and kept for the rest of the connection.
         self.sudo_password = sudo_password
+        self.sudo_attempt = 0
         self._sudo_known = None
         self.timing = timing or Timing()
         self.on_noise = on_noise
@@ -303,7 +304,10 @@ class Device(object):
         if not self.has_sudo:
             return False
         who = self.hello.get("user", "this account")
-        for _ in range(3):
+        for attempt in range(3):
+            # Which try this is (0, 1, 2), for a prompt that should say the
+            # last password was refused rather than ask as if for the first time.
+            self.sudo_attempt = attempt
             pw, known = self._ask_sudo()
             if not pw:
                 raise RpcError(

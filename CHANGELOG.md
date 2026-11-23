@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- A wrong sudo password was asked for again with the same words, so it looked as if nothing had happened. The second and third asks say the last one was refused, in `rpc tui` and at the `rpc` prompt.
+- After flashing from `rpc tui`, or an update over the air, the reconnect replaced the "flashed" message with a plain "Connected", so nothing said it had worked. Once the board is back, the status line says what was done and what it runs now.
+
 ## v1.0.0, 2026-11-23
 
 The first release of RPCortex Studio on its own. `rpc` and `rpc tui` lived in the

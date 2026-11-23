@@ -412,7 +412,8 @@ def flash_job(app, data, name, verify_note=None):
         return drive
 
     app.submit("flashing", run, link=False, cancellable=True,
-               ok=lambda drive: app.say(_fw.flashed_message(name, drive), "ok"))
+               ok=lambda drive: (app.say(_fw.flashed_message(name, drive), "ok"),
+                                    app.after_restart("Flashed {}.".format(name))))
 
 
 # --- 2 files --------------------------------------------------------------------
@@ -1144,6 +1145,7 @@ class FirmwareScreen(Screen):
         def ok(r):
             if r is None:
                 app.say("The device is restarting into {}; reconnecting.".format(ver), "ok")
+                app.after_restart("Updated over the air to {}.".format(ver))
                 return
             text = parse.clean(r.text).strip()
             app.view("update", text or "(no output)")
@@ -1180,7 +1182,8 @@ class FirmwareScreen(Screen):
             port = job.worker.release_port() if dev is not None else None
             return flasher.flash(data, port, name=name, step=job.step, cancelled=job.cancelled)
         app.submit("flashing " + ver, run, link=False, cancellable=True,
-                   ok=lambda drive: app.say(_fw.flashed_message(name, drive), "ok"))
+                   ok=lambda drive: (app.say(_fw.flashed_message(name, drive), "ok"),
+                                    app.after_restart("Flashed {}.".format(name))))
 
     def render(self, c, y, x, h, w):
         app = self.app

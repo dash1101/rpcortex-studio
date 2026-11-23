@@ -264,7 +264,12 @@ class Worker(threading.Thread):
             self._env_tried = True
             return self._env_pw
         who = self.dev.hello.get("user", "this account") if self.dev else "this account"
-        return self._ask("sudo", "sudo: password for {} on the device".format(who), masked=True)
+        attempt = getattr(self.dev, "sudo_attempt", 0) if self.dev else 0
+        if attempt:
+            prompt = "That password was refused. sudo: password for {} ({} of 3)".format(who, attempt + 1)
+        else:
+            prompt = "sudo: password for {} on the device".format(who)
+        return self._ask("sudo", prompt, masked=True)
 
     # --- connecting --------------------------------------------------------------
 

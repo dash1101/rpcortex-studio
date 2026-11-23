@@ -49,6 +49,7 @@ class App(object):
         self.flasher = flasher
         self.cwd = cwd
         self.hello = {}
+        self.restart_note = None      # said when the board is back (after_restart)
         self.device_name = ""         # sysinfo's Device ID, the host part of the prompt
         self.mode = None
         self.conn = "connecting"
@@ -101,6 +102,12 @@ class App(object):
         self.msg = (text, kind)
         self.dirty = True
 
+    def after_restart(self, text):
+        """A message for when the board is back after a restart this app
+        caused (a flash, an update): the reconnect would otherwise replace
+        it with a plain "Connected", and nobody would learn it worked."""
+        self.restart_note = text
+
     def open(self, dialog):
         self.dialogs.append(dialog)
         self.dirty = True
@@ -152,6 +159,11 @@ class App(object):
             self.hello, self.mode = ev[1], ev[2]
             for s in self.screens:
                 s.on_connect()
+            note = self.restart_note
+            if note:
+                self.restart_note = None
+                from .firmware import Running
+                self.say("{} Back, running {}.".format(note, Running(self.hello or {}).display), "ok")
             if self.mode == "legacy":
                 self.say("This firmware has no link mode. Firmware (4) can flash a new one.",
                          "warn")

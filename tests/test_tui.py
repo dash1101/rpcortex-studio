@@ -487,6 +487,8 @@ class TestSudoPrompt(TuiCase):
         self.type("nope")
         d = self.dialog(Prompt)
         self.assertEqual(d.value, "", "the field is empty again")
+        self.assertIn("refused", d.label, "the second ask says the first was refused")
+        self.assertIn("2 of 3", d.label)
         self.type(PASSWORD)
         self.idle()
         self.assertEqual(self.dev.auths, ["nope", PASSWORD])
@@ -597,6 +599,11 @@ class TestFirmware(TuiCase):
         self.assertEqual(self.flasher.touched, ["mock"])
         self.assertEqual(self.flasher.port_open_at_reset, [False], "the link let go first")
         self.assertTrue(self.until(lambda: self.app.conn == "connected"))
+        # Back again, the status line says the flash worked and what runs now,
+        # instead of a plain "Connected" that hides it.
+        self.assertTrue(self.until(lambda: "Flashed" in self.app.msg[0]),
+                        self.app.msg[0])
+        self.assertIn("Back, running", self.app.msg[0])
 
     def test_a_bad_download_writes_nothing(self):
         self.write_manifest("2.0.700", uf2_sha="1" * 64)

@@ -83,6 +83,8 @@ class Ctx(object):
         same account's.)"""
         if sys.stdin.isatty():
             who = self.dev.hello.get("user", "this account") if self.dev else "this account"
+            if self.dev is not None and getattr(self.dev, "sudo_attempt", 0):
+                err("That password was refused ({} of 3).".format(self.dev.sudo_attempt + 1))
             return getpass.getpass("Password for {} on the device (sudo): ".format(who))
         return None
 
