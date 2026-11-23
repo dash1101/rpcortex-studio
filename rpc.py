@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Run the rpc tool straight from a checkout, without installing it:
 
-    python3 tools/rpc/rpc.py info
+    python3 rpc.py info
 """
 import os
 import sys

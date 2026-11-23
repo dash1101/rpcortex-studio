@@ -681,6 +681,14 @@ def cmd_flash(ctx, a):
 
 def cmd_web(ctx, a):
     d = _web.find_web_dir(a.dir)
+    if d is None:
+        # No local copy: the same tool is on the RPCortex site, and a browser
+        # with Web Serial (Chrome, Edge, Opera) uses it from there just as well.
+        out("The browser tool: " + _web.HOSTED_URL)
+        if not a.no_browser:
+            import webbrowser
+            webbrowser.open(_web.HOSTED_URL)
+        return 0
     return _web.serve(d, a.web_port, open_browser=not a.no_browser)
 
 
@@ -743,7 +751,7 @@ def build_parser():
         prog="rpc", description="Drive an RPCortex v2 device over its USB serial console.",
         epilog="'rpc <command> --help' describes each command. Exit status: 0 ok, 1 failed, "
                "2 usage, 124 exec timed out, 130 interrupted.")
-    ap.add_argument("--version", action="version", version="rpctool " + __version__)
+    ap.add_argument("--version", action="version", version="rpcortex-studio " + __version__)
     _common(ap, False)
     sub = ap.add_subparsers(dest="cmd", metavar="<command>")
     common = argparse.ArgumentParser(add_help=False)
@@ -859,7 +867,7 @@ def build_parser():
     p = add("web", cmd_web, "serve the browser tool on localhost and open it", parent=no_port)
     p.add_argument("--port", dest="web_port", type=int, default=8765,
                    help="the HTTP port on localhost (default 8765)")
-    p.add_argument("--dir", default=None, help="the tools/web directory to serve")
+    p.add_argument("--dir", default=None, help="serve a local copy of the browser tool (the tools/web folder of the RPCortex repository) instead of opening the hosted one")
     p.add_argument("--no-browser", action="store_true")
 
     from . import tui as _tui

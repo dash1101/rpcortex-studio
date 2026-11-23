@@ -51,6 +51,7 @@ class TestRepoRules(unittest.TestCase):
             repo.choose(pkgs, "absent", "armv6m")
 
     def test_real_index_fixtures_parse(self):
+        support.need_os_repo(self)
         for name in ("index.json", "index-v2.json"):
             path = os.path.join(support.REPO, "os", "host", "fixtures", name)
             pkgs = repo.load_index(path)
@@ -80,6 +81,7 @@ class TestRepoRules(unittest.TestCase):
         self.assertEqual(repo.url_basename("https://h/"), "download")
 
     def test_default_index_matches_the_firmware(self):
+        support.need_os_repo(self)
         with open(os.path.join(support.REPO, "os", "shell", "pkgrepo.cpp")) as f:
             self.assertIn('"{}"'.format(repo.REPO_DEFAULT), f.read())
 
@@ -108,6 +110,7 @@ class TestFlash(unittest.TestCase):
             flash.uf2_chip(b"short")
 
     def test_real_images_if_built(self):
+        support.need_os_repo(self)
         out = os.path.join(support.REPO, "out")
         for board, chip in (("pico2_w", "RP2350"), ("pico", "RP2040")):
             p = os.path.join(out, "rpcortex-v2-{}.uf2".format(board))

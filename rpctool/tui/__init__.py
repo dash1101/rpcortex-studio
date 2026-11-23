@@ -19,7 +19,7 @@ import argparse
 import os
 import sys
 
-__version__ = "0.1.0"
+from .. import __version__  # noqa: F401  (one version for all of Studio)
 
 
 DESCRIPTION = ("A full-screen program for an RPCortex v2 device: its state, files, packages, "

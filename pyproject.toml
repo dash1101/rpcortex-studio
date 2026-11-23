@@ -3,9 +3,9 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "rpctool"
+name = "rpcortex-studio"
 version = "1.0.0"
-description = "Drive an RPCortex v2 device from a computer over its USB serial console"
+description = "RPCortex Studio: a computer's side of an RPCortex v2 device, over its USB serial console"
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = ["pyserial>=3.4"]
@@ -18,6 +18,8 @@ classifiers = [
 [project.scripts]
 rpc = "rpctool.cli:main"
 rpc-tui = "rpctool.tui:main"
+rpcortex-studio = "studio:run"
 
 [tool.setuptools]
 packages = ["rpctool", "rpctool.tui"]
+py-modules = ["studio"]

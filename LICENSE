@@ -1,0 +1,54 @@
+RPCortex License
+Copyright (c) 2026 dash1101 (NovaLabs). All rights reserved.
+
+RPCortex (the "Software") -- including its source code, documentation, assets,
+artwork, and design -- is the proprietary work of dash1101 ("the Author").
+The source is published publicly so it can be read and learned from. This is
+NOT an open-source license, and publishing the source grants no license to use
+it beyond what is written below.
+
+1. Viewing & study
+   You may view, read, and study the publicly published source for personal,
+   educational, and reference purposes, and you may fork it on the hosting
+   platform solely to read or to prepare a permission request.
+
+2. Permission required for everything else
+   You may NOT use, run (beyond personal evaluation), copy, modify, adapt,
+   translate, merge, publish, distribute, sublicense, sell, host as a service,
+   or create derivative or combined works from the Software -- in whole or in
+   part -- WITHOUT the Author's prior written permission. Request permission at
+   support@novalabs.app.
+
+3. Attribution
+   Any use the Author permits must give clear, visible credit to "dash1101" and
+   to "RPCortex," and must keep all copyright and license notices intact. You
+   may not remove, hide, or alter these notices.
+
+4. No rebadging
+   You may not rename, rebrand, relicense, or present the Software (or any
+   permitted derivative of it) as your own work, or under a different name,
+   author, or identity. The RPCortex name, the codenames "Vela" and "Vela II,"
+   and the logo are not licensed for your use without separate written
+   permission.
+
+5. Contributions
+   By submitting a contribution (code, assets, docs, or otherwise) to the
+   project, you grant the Author a perpetual, irrevocable, royalty-free license
+   to use, modify, and distribute it as part of the Software, and you confirm
+   you have the right to do so.
+
+6. No warranty
+   The Software is provided "AS IS," without warranty of any kind, express or
+   implied. To the maximum extent permitted by law, the Author is not liable
+   for any claim, damages, or other liability arising from the Software or its
+   use.
+
+7. Reservation of rights
+   All rights not expressly granted here are reserved by the Author.
+
+8. Third-party components
+   The Software builds on separately licensed third-party work, including the
+   Raspberry Pi Pico SDK, lwIP and littlefs. Those components stay under their
+   own licenses, which this one does not supersede.
+
+For licensing, reuse, or permission requests, contact: support@novalabs.app

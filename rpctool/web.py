@@ -1,4 +1,4 @@
-"""Serving the browser tool (tools/web) on localhost.
+"""Serving a local copy of the browser tool on localhost.
 
 Web Serial is only offered to secure pages, and http://localhost counts as
 one, so a plain local server is all the browser tool needs.
@@ -33,19 +33,18 @@ TYPES = {
 }
 
 
+HOSTED_URL = "https://rpc.novalabs.app/vela-tool/"
+
+
 def find_web_dir(explicit=None):
-    """--dir, then RPC_WEB_DIR, then tools/web beside this package in a checkout."""
+    """--dir, then RPC_WEB_DIR. None when neither is given: `rpc web` then opens
+    the hosted copy (HOSTED_URL)."""
     for cand in (explicit, os.environ.get("RPC_WEB_DIR")):
         if cand:
             if os.path.isfile(os.path.join(cand, "index.html")):
                 return os.path.abspath(cand)
             raise RpcError("{} has no index.html".format(cand))
-    here = os.path.dirname(os.path.abspath(__file__))
-    cand = os.path.normpath(os.path.join(here, "..", "..", "web"))
-    if os.path.isfile(os.path.join(cand, "index.html")):
-        return cand
-    raise RpcError("The browser tool's files were not found. Run from a checkout of the "
-                   "repository (pip install -e tools/rpc), or pass --dir <path to tools/web>.")
+    return None
 
 
 class _Handler(SimpleHTTPRequestHandler):

@@ -1,26 +1,45 @@
-# rpc: the command-line tool
+# RPCortex Studio
 
-`rpc` drives an RPCortex v2 device from a computer over its USB serial
-console: run commands and get their exit status, move files both ways with a
-SHA-256 check, install packages, back the device up, flash new firmware. It
-speaks the link protocol ([LINK.md](../../LINK.md)) and falls back to the
-prompt on firmware older than that. Linux, macOS and Windows; Python 3.8 or
-later; one dependency, pyserial.
+The computer's side of an [RPCortex](https://github.com/dash1101/RPCortex) v2
+device. It talks to the device over its USB serial console using the link
+protocol ([LINK.md](https://github.com/dash1101/RPCortex/blob/main/LINK.md)),
+so it is a real connection and not a wrapper that types commands: files move
+both ways with a SHA-256 check, commands come back with their exit status, and a
+board with no network of its own can borrow this computer's connection.
+
+Two ways to use it:
+
+- **`rpcortex-studio`** with nothing after it opens the full-screen app (`rpc
+  tui`): the device, its files, packages, firmware, logs and tasks, and a
+  terminal.
+- **`rpcortex-studio <command>`**, or `rpc <command>` when installed with pip, is
+  the command-line tool: `exec`, `put`, `get`, `install`, `backup`, `flash`,
+  `term` and the rest, listed below.
+
+Linux, macOS and Windows. It falls back to the prompt on firmware from before
+link mode.
 
 ## Installing
 
-From a checkout of this repository:
+**A single program.** Each [release](https://github.com/dash1101/rpcortex-studio/releases)
+has one file per system (`rpcortex-studio-linux-x64`,
+`rpcortex-studio-macos-arm64`, `rpcortex-studio-windows-x64.exe`) and a
+`SHA256SUMS` to check it against. Nothing else to install.
+[Orbit](https://github.com/dash1101/orbit) installs and updates it for you.
+
+**With Python** (3.8 or later; one dependency, pyserial):
 
 ```
-pip install -e tools/rpc
+pip install git+https://github.com/dash1101/rpcortex-studio
 ```
 
-That puts `rpc` on the PATH. The `-e` keeps it pointing at the checkout, which
-is also where `rpc web` finds the browser tool. Without installing anything:
+That puts `rpc`, `rpc-tui` and `rpcortex-studio` on the PATH. On Windows,
+`rpc tui` also needs `pip install windows-curses`. Without installing anything,
+from a checkout:
 
 ```
 pip install pyserial
-python3 tools/rpc/rpc.py info          # or: cd tools/rpc && python3 -m rpctool info
+python3 rpc.py info          # or: python3 -m rpctool info
 ```
 
 ## Finding the device
@@ -132,7 +151,7 @@ Ctrl+C.
 | `log` | `rpc log` prints the device's log (`logdump`). |
 | `ps` | `rpc ps` lists its tasks. |
 | `flash` | `rpc flash out/rpcortex-v2-pico2_w.uf2` resets the board into BOOTSEL (by opening the port at 1200 baud), waits for its drive, checks the image is for that chip, and copies it on. The firmware is replaced and the files are kept. |
-| `web` | `rpc web` serves the browser tool on http://localhost:8765 and opens it. `--port` picks another port. |
+| `web` | `rpc web` opens the browser tool on the RPCortex site. `--dir <tools/web>` serves a local copy on http://localhost:8765 instead (`--port` picks another port). |
 | `watch` | `rpc watch "meminfo" --every 5` runs a command again and again until Ctrl+C. |
 
 | `tui` | `rpc tui` is a full-screen program for the device. See below. |
@@ -269,12 +288,12 @@ something other than a real port.
 ## Tests
 
 ```
-python3 -m unittest discover tools/rpc/tests
+python3 -m unittest discover -s tests
 ```
 
 No hardware and no serial port: `tests/mockdev.py` is a pretend device written
 from the firmware's source (the prompt and its line editor, the login prompt,
-link mode as `os/shell/link.cpp` implements it, the old `put`, firmware without
+link mode as the firmware's `os/shell/link.cpp` implements it, the old `put`, firmware without
 link mode), with CRLF line endings and background lines dropped between frames.
 The tests run every command against it, the fallback for old firmware, logging
 in, recovering a device an earlier client left in link mode or mid-transfer,
@@ -288,4 +307,7 @@ and plugging back in, cancelling, the terminal and backups with system files.
 the middle of an `exec` and at its prompt under `rpc term`, and `rpc` answers
 from an HTTP server on 127.0.0.1 (redirects, a 404, gzip, a slow server, the
 allowlist on every hop, the size cap, a cancel from either side).
-`os/host/run_all.sh` runs them too.
+A few tests check the tool against the firmware's own files (its default
+package index and the index fixtures). They read a checkout of the RPCortex
+repository named by `RPCORTEX_DIR`, and are skipped without one; CI always
+runs them.

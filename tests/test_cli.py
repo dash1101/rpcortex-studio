@@ -307,6 +307,7 @@ class TestInstall(CliCase):
         self.assertIn("(not for armv6m)", [ln for ln in text.splitlines() if "bigone" in ln][0])
 
     def test_list_real_fixture(self):
+        support.need_os_repo(self)
         fixture = os.path.join(support.REPO, "os", "host", "fixtures", "index-v2.json")
         rc, out, err = run_cli(None, ["install", "--list", "--index", fixture])
         self.assertEqual(rc, 0, err)

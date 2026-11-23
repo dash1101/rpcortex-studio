@@ -6,8 +6,18 @@ import os
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.dirname(HERE)                     # tools/rpc
-REPO = os.path.dirname(os.path.dirname(ROOT))    # the repository
+ROOT = os.path.dirname(HERE)                     # the repository
+# A few tests check the tool against the firmware itself: its default package
+# index, the index fixtures it is tested with, images it has built. They read a
+# checkout of the RPCortex repository named by RPCORTEX_DIR (CI checks one out),
+# and without one they are skipped, saying so, never counted as passed.
+REPO = os.environ.get("RPCORTEX_DIR") or ""
+
+
+def need_os_repo(test):
+    if not REPO or not os.path.isfile(os.path.join(REPO, "os", "shell", "pkgrepo.cpp")):
+        test.skipTest("needs a checkout of the RPCortex repository in RPCORTEX_DIR")
+    return REPO
 for p in (ROOT, HERE):
     if p not in sys.path:
         sys.path.insert(0, p)
