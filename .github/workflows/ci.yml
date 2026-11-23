@@ -10,10 +10,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, windows-2022, macos-14]
+        os: [ubuntu-22.04, windows-2022, macos-latest]
         python: ["3.8", "3.12"]
         exclude:
-          - { os: macos-14, python: "3.8" }
+          - { os: macos-latest, python: "3.8" }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4

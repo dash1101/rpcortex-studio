@@ -15,7 +15,7 @@ jobs:
         include:
           - { os: ubuntu-22.04, file: rpcortex-studio-linux-x64 }
           - { os: windows-2022, file: rpcortex-studio-windows-x64.exe }
-          - { os: macos-14,     file: rpcortex-studio-macos-arm64 }
+          - { os: macos-latest,     file: rpcortex-studio-macos-arm64 }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
