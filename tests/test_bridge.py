@@ -151,7 +151,7 @@ class TestOffer(BridgeBase):
         self.d = support.connect(self.dev)            # no bridge given
         r = self.d.exec("wget {}/small.txt /home/root/s.txt".format(self.url))
         self.assertEqual(r.rc, 1)
-        self.assertIn("rpc or the browser tool attached", r.text)
+        self.assertIn("goes online through RPC Studio", r.text)
         self.assertEqual(self.dev.bridge_frames, [])
 
     def test_port_closing_ends_the_offer(self):

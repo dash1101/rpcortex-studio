@@ -877,9 +877,11 @@ class MockDevice(object):
 
     def no_route(self):
         if self.netless:
-            self.out_err("This board has no wireless hardware.")
-            self.out("  With rpc or the browser tool attached, this goes through the computer's\n"
-                     "  connection: 'rpc term', 'rpc exec', or the browser tool's terminal.\n")
+            # shell/bridge.cpp's bridge_no_route
+            self.out_err("No network. This board goes online through RPC Studio.")
+            self.out("  Plug it into a computer and work from Studio: 'rpc term', 'rpc exec',\n"
+                     "  the Studio app, or the browser tool. Commands then use the computer's\n"
+                     "  connection.\n")
         else:
             self.out_err("No network. Connect with 'wifi connect <ssid>' first.")
         return 1
