@@ -204,7 +204,7 @@ def _print_exec(r):
 
 def cmd_ports(ctx, a):
     try:
-        cands = transport.list_candidates()
+        cands = transport.list_candidates(include_network=True)
     except RpcError as e:
         err("error: {}".format(e))
         cands = []
@@ -701,6 +701,33 @@ def cmd_tui(ctx, a):
     return _tui.run(a)
 
 
+def cmd_bridge(ctx, a):
+    """rpc bridge: serve every board's network port until stopped (netbridge.py)."""
+    from . import netbridge
+    if a.install or a.uninstall:
+        if a.uninstall:
+            out(netbridge.uninstall())
+            return 0
+        extra = ["--lan"] if a.lan else []
+        out("rpc bridge will start at every login: " + netbridge.install(extra))
+        return 0
+    allow = []
+    for item in getattr(a, "bridge_allow", None) or []:
+        allow.extend(x for x in item.split(",") if x.strip())
+    try:
+        cap = _bridge.parse_size(getattr(a, "bridge_max", None) or _bridge.DEFAULT_MAX)
+    except ValueError:
+        raise RpcError("--bridge-max takes a size such as 8M or 512K")
+    quiet = getattr(a, "quiet", False)
+    log = (lambda text: None) if quiet else (lambda text: err("[rpc bridge] " + text))
+    try:
+        netbridge.serve(lan=a.lan, allow=allow, max_bytes=cap,
+                        port=getattr(a, "port", None), log=log)
+    except KeyboardInterrupt:
+        return 0
+    return 0
+
+
 def cmd_watch(ctx, a):
     dev = ctx.device()
     line = " ".join(a.command)
@@ -876,6 +903,13 @@ def build_parser():
     p = add("tui", cmd_tui, "a full-screen program for the device (files, packages, "
             "firmware, log, console)")
     _tui.add_arguments(p, connection=False)
+
+    p = add("bridge", cmd_bridge, "give every board plugged in this computer's connection, "
+            "all the time (its network port; firmware v2.0.69x or later)")
+    p.add_argument("--lan", action="store_true",
+                   help="let boards reach this computer's own network too (the router, other machines); off by default")
+    p.add_argument("--install", action="store_true", help="start it at every login (systemd, launchd or the Startup folder)")
+    p.add_argument("--uninstall", action="store_true", help="stop starting it at login")
 
     p = add("watch", cmd_watch, "run a command again every few seconds")
     p.add_argument("command", nargs="+")

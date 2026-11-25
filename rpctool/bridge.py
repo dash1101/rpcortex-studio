@@ -80,9 +80,13 @@ def parse_size(text):
 class Policy(object):
     """What this computer agrees to fetch for a device."""
 
-    def __init__(self, allow=None, max_bytes=DEFAULT_MAX):
+    def __init__(self, allow=None, max_bytes=DEFAULT_MAX, block_private=False):
         self.allow = [a.strip().lower() for a in (allow or []) if a and a.strip()]
         self.max_bytes = max_bytes
+        # rpc bridge: requests come from anything running on the board, not a
+        # person at its console, so the computer's own network is off limits
+        # unless --lan says otherwise.
+        self.block_private = block_private
 
     def check(self, url):
         """Raise Refused unless `url` may be fetched."""
@@ -107,6 +111,9 @@ class Policy(object):
         if not listed and _is_local(host):
             raise Refused("refused", "{} is this computer itself or link-local; name it with "
                                      "--bridge-allow to fetch from it".format(host))
+        if self.block_private and not listed and _is_private(host):
+            raise Refused("refused", "{} is on this computer's own network; 'rpc bridge --lan' "
+                                     "lets the board reach it".format(host))
 
 
 def _is_local(host):
@@ -158,6 +165,24 @@ def _frame_id(frame):
 def _after_id(frame):
     parts = frame.rest.split(" ", 1)
     return parts[1] if len(parts) > 1 else ""
+
+
+def _is_private(host):
+    """Whether `host` is, or resolves to, a private (RFC 1918, unique-local)
+    address: the network the computer is on, its router, its printers."""
+    import ipaddress
+    h = host.strip("[]")
+    try:
+        addrs = [ipaddress.ip_address(h)]
+    except ValueError:
+        if h.endswith(".local") or h.endswith(".lan") or h.endswith(".home.arpa"):
+            return True
+        try:
+            addrs = [ipaddress.ip_address(i[4][0].split("%")[0])
+                     for i in socket.getaddrinfo(h, None)]
+        except (socket.gaierror, OSError, ValueError):
+            return False
+    return any(a.is_private or a.is_loopback or a.is_link_local for a in addrs)
 
 
 class Bridge(object):

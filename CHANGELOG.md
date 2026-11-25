@@ -1,6 +1,14 @@
 # Changelog
 
 
+
+## Unreleased
+
+### New
+
+- `rpc bridge`: gives every RPCortex board plugged into this computer its connection, all the time, through the board's network port (firmware v2.0.69x and later). Any program on the board can use it, not just commands typed at its console: a background download, a service, a package's own work, a Nova D1 menu. It waits for boards, reconnects when one is unplugged or restarts, and leaves the console free for `rpc term`, Studio and the browser tool. Requests to this computer's own network (the router, other machines) are refused unless `--lan`. `rpc bridge --install` starts it at every login (systemd, launchd or the Windows Startup folder).
+- `rpc ports` lists a board's network port, labelled; nothing picks it as a console.
+
 ## v1.2.0, 2026-11-25
 
 ### Improved

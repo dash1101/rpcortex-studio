@@ -152,7 +152,7 @@ def touch_1200(path):
 
 class PortInfo(object):
     def __init__(self, device, description="", vid=None, pid=None,
-                 manufacturer="", product="", serial_number=""):
+                 manufacturer="", product="", serial_number="", interface="", location=""):
         self.device = device
         self.description = description or ""
         self.vid = vid
@@ -160,6 +160,14 @@ class PortInfo(object):
         self.manufacturer = manufacturer or ""
         self.product = product or ""
         self.serial_number = serial_number or ""
+        self.interface = interface or ""
+        self.location = location or ""
+
+    @property
+    def network(self):
+        """The board's network port (firmware from v2.0.69x): bridge frames only,
+        never a console. `rpc bridge` serves it; nothing else should open it."""
+        return "rpcortex network" in (self.interface + " " + self.description).lower()
 
     @property
     def rpcortex(self):
@@ -169,20 +177,27 @@ class PortInfo(object):
     def label(self):
         ids = "{:04X}:{:04X}".format(self.vid or 0, self.pid or 0)
         what = "RPCortex" if self.rpcortex else (self.product or self.description or "Pico")
+        if self.network:
+            what = "RPCortex network port (rpc bridge)"
         sn = "  serial {}".format(self.serial_number) if self.serial_number else ""
         return "{:<16} {}  {}{}".format(self.device, ids, what, sn)
 
 
-def list_candidates():
-    """Serial ports that belong to a Raspberry Pi silicon board, RPCortex first."""
+def list_candidates(include_network=False):
+    """Serial ports that belong to a Raspberry Pi silicon board, RPCortex first.
+    A board's network port is left out unless asked for: it is not a console."""
     _pyserial()
     from serial.tools import list_ports
     found = []
     for p in list_ports.comports():
         if p.vid != RPI_VID:
             continue
-        found.append(PortInfo(p.device, p.description, p.vid, p.pid,
-                              p.manufacturer, p.product, p.serial_number))
+        info = PortInfo(p.device, p.description, p.vid, p.pid, p.manufacturer, p.product,
+                        p.serial_number, getattr(p, "interface", "") or "",
+                        getattr(p, "location", "") or "")
+        if info.network and not include_network:
+            continue
+        found.append(info)
     found.sort(key=lambda p: (not p.rpcortex, p.device))
     return found
 
