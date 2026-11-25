@@ -92,7 +92,15 @@ class FakeBoard(object):
                 return status, bytes(data), headers, rest
 
 
+try:
+    import serial  # noqa: F401  (the daemon opens the port with pyserial)
+    HAVE_SERIAL = True
+except ImportError:
+    HAVE_SERIAL = False
+
+
 @unittest.skipIf(os.name == "nt", "needs a pseudo-terminal")
+@unittest.skipUnless(HAVE_SERIAL, "needs pyserial to open the port")
 class TestNetworkPort(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
