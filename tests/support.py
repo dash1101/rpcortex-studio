@@ -83,7 +83,7 @@ def no_real_ports():
     with mock.patch.dict(os.environ, env, clear=True), \
             mock.patch.object(transport, "open_serial", refuse), \
             mock.patch.object(transport, "touch_1200", refuse), \
-            mock.patch.object(transport, "list_candidates", lambda: []), \
+            mock.patch.object(transport, "list_candidates", lambda **kw: []), \
             mock.patch.object(flash, "find_drives", lambda: []), \
             mock.patch.object(flash, "bootsel_on_usb", lambda: False), \
             mock.patch("shutil.which", lambda name: None), \
