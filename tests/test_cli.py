@@ -538,7 +538,7 @@ class TestLoginCli(CliCase):
 class TestPortsAndFlash(CliCase):
     def test_ports(self):
         cands = [transport.PortInfo("/dev/ttyACM9", "x", 0x2E8A, 0x0011, "Nova Labs", "RPCortex", "E66")]
-        with support.no_real_ports(), mock.patch.object(transport, "list_candidates", lambda: cands):
+        with support.no_real_ports(), mock.patch.object(transport, "list_candidates", lambda **kw: cands):
             out = support._Out()
             with mock.patch.object(sys, "stdout", out):
                 rc = support.cli.main(["ports"])
@@ -551,13 +551,13 @@ class TestPortsAndFlash(CliCase):
     def test_choose_port_prefers_rpcortex_and_env(self):
         a = transport.PortInfo("/dev/a", "", 0x2E8A, 0x000A, "", "Pico", "")
         b = transport.PortInfo("/dev/b", "", 0x2E8A, 0x0011, "Nova Labs", "RPCortex", "")
-        with support.no_real_ports(), mock.patch.object(transport, "list_candidates", lambda: [a, b]):
+        with support.no_real_ports(), mock.patch.object(transport, "list_candidates", lambda **kw: [a, b]):
             self.assertEqual(transport.choose_port(None), "/dev/b")
             os.environ["RPC_PORT"] = "/dev/env"
             self.assertEqual(transport.choose_port(None), "/dev/env")
             self.assertEqual(transport.choose_port("/dev/explicit"), "/dev/explicit")
         c = transport.PortInfo("/dev/c", "", 0x2E8A, 0x0011, "Nova Labs", "RPCortex", "")
-        with support.no_real_ports(), mock.patch.object(transport, "list_candidates", lambda: [b, c]), \
+        with support.no_real_ports(), mock.patch.object(transport, "list_candidates", lambda **kw: [b, c]), \
                 mock.patch.object(sys.stdin, "isatty", lambda: False):
             with self.assertRaises(support.cli.RpcError):
                 transport.choose_port(None)
@@ -589,7 +589,7 @@ class TestPortsAndFlash(CliCase):
             state["reset"] = True
         with support.no_real_ports(), \
                 mock.patch.object(transport, "touch_1200", touch), \
-                mock.patch.object(transport, "list_candidates", lambda: [
+                mock.patch.object(transport, "list_candidates", lambda **kw: [
                     transport.PortInfo("/dev/mockacm", "", 0x2E8A, 0x0011, "Nova Labs", "RPCortex", "")]), \
                 mock.patch.object(flash, "find_drives", lambda: drives if state["reset"] or "--no-reset" in argv else []), \
                 mock.patch.object(sys, "stdout", out), mock.patch.object(sys, "stderr", err):
