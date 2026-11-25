@@ -295,6 +295,7 @@ class MockDevice(object):
         self.corrupt_put = False      # the device hashes what it got, after a bit flip
         self.put_window = 2           # READY window= (None: firmware before it, says nothing)
         self.put_fail_at = None       # ERR io once this many bytes have arrived
+        self.bridge_headers = []      # the FHDR lines of the last bridged answer
         self.put_max_unacked = 0      # the most D lines seen queued ahead of an ACK
         self.corrupt_get = False      # a D frame is damaged on the way to the host
         self.stall_get = 0.0          # seconds of silence before the second D frame
@@ -953,7 +954,10 @@ class MockDevice(object):
                 _, typ, fid, rest = r
                 if fid != rid:
                     continue
-                if typ == "FHEAD":
+                if typ == "FHDR":
+                    self.bridge_headers.append(base64.b64decode(rest.strip()).decode("latin-1"))
+                elif typ == "FHEAD":
+                    self.bridge_headers = []
                     status = int(rest.split(" ")[0])
                     for w in rest.split(" ")[1:]:
                         if w.startswith("len="):

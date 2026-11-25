@@ -234,7 +234,32 @@ class TestExec(BridgeBase):
         self.assertEqual(hdrs.get("x-test"), "yes")
         self.assertNotIn("evil.example", hdrs.get("host", ""), "the device cannot set Host")
         self.assertNotIn("cookie", hdrs, "nor send cookies")
-        self.assertIn("RPCortex network bridge", hdrs.get("user-agent", ""))
+        self.assertIn("RPCortex network bridge", hdrs.get("user-agent", ""),
+                      "a device that sends no agent of its own gets the bridge's")
+
+    def test_device_user_agent_goes_through(self):
+        # A page answers the bridge as it would the board on Wi-Fi: some sites
+        # turn away an agent they do not know.
+        self.make()
+        Site.seen[:] = []
+        def go():
+            return self.dev.bridge_fetch("GET", self.url + "/echo",
+                                         headers=["User-Agent: RPCortex-browse/1.0 (text-mode)"])
+        self.dev.c_bridgeua = lambda a: (self.dev.out(repr(go()) + "\n") or 0)
+        self.d.exec("bridgeua")
+        got = [s for s in Site.seen if s[0] == "GET"][-1]
+        hdrs = {k.lower(): v for k, v in got[2].items()}
+        self.assertEqual(hdrs.get("user-agent"), "RPCortex-browse/1.0 (text-mode)")
+
+    def test_final_url_after_redirects_is_reported(self):
+        d = self.make()
+        self.dev.bridge_headers = []
+        r = d.exec("curl {}/moved".format(self.url))
+        self.assertEqual(r.rc, 0, r.text)
+        self.assertIn("X-RPC-Final-URL: " + self.url + "/small.txt", self.dev.bridge_headers)
+        r = d.exec("curl {}/small.txt".format(self.url))
+        self.assertFalse(any(h.startswith("X-RPC-Final-URL") for h in self.dev.bridge_headers),
+                         "not sent when nothing redirected")
 
 
 class TestPolicy(BridgeBase):

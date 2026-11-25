@@ -376,14 +376,21 @@ class Bridge(object):
         try:
             req = Request(url, data=body if body or method in ("POST", "PUT", "PATCH") else None,
                           method=method)
+            agent = None
             for h in headers:
                 name, _, value = h.partition(":")
                 if not name.strip() or "\r" in h or "\n" in h:
                     continue
+                if name.strip().lower() == "user-agent" and value.strip():
+                    agent = value.strip()[:160]
+                    continue
                 if name.strip().lower() in DROP_REQUEST:
                     continue
                 req.add_header(name.strip(), value.strip())
-            req.add_header("User-Agent", "rpctool/{} (RPCortex network bridge)".format(__version__))
+            # The device's own User-Agent goes through, so a page answers the
+            # bridge as it would answer the board on Wi-Fi: some sites (DuckDuckGo's
+            # text version) turn away an agent they do not recognise.
+            req.add_header("User-Agent", agent or "rpctool/{} (RPCortex network bridge)".format(__version__))
             req.add_header("Accept-Encoding", "identity")
             opener = self._opener or _opener(self.policy)
             try:
@@ -412,6 +419,12 @@ class Bridge(object):
                         line = "ETag: " + v
                     if len(line) < 200:
                         passed.append(line)
+            # Where the answer came from after the redirects followed here: the
+            # device only saw the URL it asked for, and a browser reads relative
+            # links against this one.
+            final = resp.geturl() if hasattr(resp, "geturl") else getattr(resp, "url", None)
+            if final and final != url and "\r" not in final and "\n" not in final and len(final) < 240:
+                passed.append("X-RPC-Final-URL: " + final)
             q.put(("head", status, passed, None if method == "HEAD" else length))
             if method == "HEAD":
                 q.put(("end",))
