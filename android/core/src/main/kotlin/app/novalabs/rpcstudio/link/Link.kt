@@ -15,6 +15,8 @@ import java.util.Base64
 internal const val FRAME_START: Byte = 0x1E
 const val LINE_MAX = 1100           // a request line, newline included (LINK.md)
 const val DEFAULT_CHUNK = 768
+/** The most D lines a PUT keeps unacknowledged, whatever the device offers. */
+const val PUT_WINDOW_MAX = 4
 
 /** Every wait, in milliseconds, in one place so tests can shrink them. */
 class Timing(
@@ -374,23 +376,34 @@ class LinkClient(val t: Transport, reader: FrameReader? = null, onNoise: ((Strin
             while (!(f.type == "READY" || f.isFinal)) f = frame(timing.transfer)
             if (f.type == "ERR") { busy = null; throw f.error() }
             if (f.type == "OK") throw ProtocolError("PUT was answered OK before READY")
-            val chunk = f.kv()["chunk"]?.toIntOrNull()?.coerceIn(1, this.chunk) ?: this.chunk
+            val kv = f.kv()
+            val chunk = kv["chunk"]?.toIntOrNull()?.coerceIn(1, this.chunk) ?: this.chunk
+            // How many D lines may be unacknowledged (READY window=, LINK.md); firmware
+            // that does not say gets one at a time.
+            val window = kv["window"]?.toIntOrNull()?.coerceIn(1, PUT_WINDOW_MAX) ?: 1
             var sent = 0
+            var ackedUpto = 0
+            val pending = ArrayDeque<Int>()
             progress?.invoke(0, data.size.toLong())
-            while (sent < data.size) {
-                val end = minOf(sent + chunk, data.size)
-                val piece = data.copyOfRange(sent, end)
-                t.write("D ".toByteArray() + Base64.getEncoder().encode(piece) + "\n".toByteArray())
-                sent = end
+            while (ackedUpto < data.size) {
+                while (sent < data.size && pending.size < window) {
+                    val end = minOf(sent + chunk, data.size)
+                    val piece = data.copyOfRange(sent, end)
+                    t.write("D ".toByteArray() + Base64.getEncoder().encode(piece) + "\n".toByteArray())
+                    sent = end
+                    pending.addLast(sent)
+                }
                 while (true) {
                     f = frame(timing.transfer)
                     if (f.type == "ACK") break
                     if (f.type == "ERR") { busy = null; throw f.error() }
-                    if (f.type == "OK") throw ProtocolError("PUT ended early, after $sent bytes")
+                    if (f.type == "OK") throw ProtocolError("PUT ended early, after $ackedUpto bytes")
                 }
                 val acked = f.rest.split(" ")[0].toIntOrNull() ?: throw ProtocolError("malformed ACK: $f")
-                if (acked != sent) throw ProtocolError("the device acknowledged $acked bytes, $sent were sent")
-                progress?.invoke(sent.toLong(), data.size.toLong())
+                if (acked != pending.first()) throw ProtocolError("the device acknowledged $acked bytes, ${pending.first()} were sent")
+                pending.removeFirst()
+                ackedUpto = acked
+                progress?.invoke(ackedUpto.toLong(), data.size.toLong())
             }
             f = final(timing.transfer)
             busy = null

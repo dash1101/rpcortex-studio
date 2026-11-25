@@ -293,6 +293,9 @@ class MockDevice(object):
 
         # faults
         self.corrupt_put = False      # the device hashes what it got, after a bit flip
+        self.put_window = 2           # READY window= (None: firmware before it, says nothing)
+        self.put_fail_at = None       # ERR io once this many bytes have arrived
+        self.put_max_unacked = 0      # the most D lines seen queued ahead of an ACK
         self.corrupt_get = False      # a D frame is damaged on the way to the host
         self.stall_get = 0.0          # seconds of silence before the second D frame
         self.drop_link = False        # leave link mode silently after the next request
@@ -1168,6 +1171,11 @@ class MockDevice(object):
     def err(self, code, msg):
         self.frame("ERR {} {}".format(code, msg))
 
+    def _queued_d_lines(self):
+        """Complete lines already waiting from the host: what it sent ahead of the ACK."""
+        with self.from_host.cv:
+            return bytes(self.from_host.buf).count(b"\n")
+
     def link_read(self, timeout, watch=False):
         """('ok', line) | ('timeout',) | ('intr',) | ('long',) | ('gone',)"""
         buf = bytearray()
@@ -1251,6 +1259,8 @@ class MockDevice(object):
                     self.l_auth(rest)
                 elif verb == "BRIDGE" and self.proto >= 3:
                     self.l_bridge(rest)
+                elif verb == "D" and self.put_window:
+                    pass                  # a line sent ahead before a PUT failed
                 elif verb == "BYE":
                     self.byes += 1
                     self.frame("OK")
@@ -1352,7 +1362,10 @@ class MockDevice(object):
             return self.err("nospace", "{} bytes free".format(self.fs.free()))
         if not self.fs.write(p, b""):
             return self.err("io", "could not open {} for writing".format(p))
-        self.frame("READY chunk={}".format(CHUNK))
+        if self.put_window:
+            self.frame("READY chunk={} window={}".format(CHUNK, self.put_window))
+        else:
+            self.frame("READY chunk={}".format(CHUNK))
         got = bytearray()
         fail = None
         while len(got) < size:
@@ -1377,6 +1390,10 @@ class MockDevice(object):
                 break
             got.extend(data)
             self.fs.files[p] = bytes(got)
+            if self.put_fail_at is not None and len(got) >= self.put_fail_at:
+                fail = ("io", "the filesystem refused the write")
+                break
+            self.put_max_unacked = max(self.put_max_unacked, self._queued_d_lines())
             self.frame("ACK {}".format(len(got)))
         if fail:
             self.fs.remove(p)

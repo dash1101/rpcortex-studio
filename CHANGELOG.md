@@ -1,5 +1,12 @@
 # Changelog
 
+
+## Unreleased
+
+### Improved
+
+- Sending files is faster on firmware that allows it: `rpc put` keeps the next piece on its way while the board writes the last (the `window` a board announces in its `READY`, LINK.md). 35 to 51 KB/s on a Pico 2 W; older firmware is sent to as before, one piece at a time.
+
 ## v1.1.0, 2026-11-23
 
 ### New

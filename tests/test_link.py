@@ -9,7 +9,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import support  # noqa: F401  (sets the import path)
-from mockdev import MockDevice
+from mockdev import CHUNK, MockDevice
 from rpctool.errors import DeviceTimeout, DigestMismatch, LinkError, RpcError
 from rpctool.link import FrameReader
 
@@ -158,6 +158,42 @@ class TestFiles(LinkBase):
         self.assertNotIn("/tmp/bad", self.dev.fs.files)
         self.dev.corrupt_put = False
         self.link.ping()
+
+    def test_put_sends_ahead_within_the_window(self):
+        data = os.urandom(CHUNK * 12 + 5)
+        self.dev.put_max_unacked = 0
+        self.d.put(data, "/tmp/w")
+        self.assertEqual(self.dev.fs.files["/tmp/w"], data)
+        # The next line is already waiting while one is written, and never more
+        # than the window allows.
+        self.assertGreaterEqual(self.dev.put_max_unacked, 1)
+        self.assertLessEqual(self.dev.put_max_unacked, self.dev.put_window - 1)
+
+    def test_put_one_at_a_time_without_a_window(self):
+        self.dev.put_window = None
+        try:
+            data = os.urandom(CHUNK * 6)
+            self.dev.put_max_unacked = 0
+            self.d.put(data, "/tmp/w1")
+            self.assertEqual(self.dev.fs.files["/tmp/w1"], data)
+            self.assertEqual(self.dev.put_max_unacked, 0)
+        finally:
+            self.dev.put_window = 2
+
+    def test_put_failing_midway_leaves_the_link_in_step(self):
+        # The line sent ahead arrives after the PUT's ERR; the device drops it,
+        # and the next request gets its own answer, not a stray one.
+        self.dev.put_fail_at = CHUNK * 3
+        try:
+            with self.assertRaises(LinkError) as cm:
+                self.d.put(os.urandom(CHUNK * 8), "/tmp/f")
+            self.assertEqual(cm.exception.code, "io")
+        finally:
+            self.dev.put_fail_at = None
+        self.assertNotIn("/tmp/f", self.dev.fs.files)
+        self.link.ping()
+        self.dev.fs.files["/tmp/after"] = b"still in step"
+        self.assertEqual(self.d.get("/tmp/after"), b"still in step")
 
     def test_host_detects_damaged_get(self):
         self.dev.fs.files["/tmp/g"] = b"abc" * 1000

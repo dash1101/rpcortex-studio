@@ -108,6 +108,19 @@ class LinkMockTest {
         assertFailsWith<RpcError> { d.put(ByteArray(3000) { 1 }, "/home/root/bad.bin") }
     }
 
+    @Test fun `an upload failing midway, with a piece sent ahead, leaves the link in step`() {
+        val d = connect(mock("""{"_attrs": {"put_fail_at": 2304}}"""))
+        assertFailsWith<RpcError> { d.put(ByteArray(8000) { 3 }, "/home/root/f.bin") }
+        assertEquals("in step", d.exec("echo in step").text.trim())
+    }
+
+    @Test fun `uploads one piece at a time to firmware without a window`() {
+        val d = connect(mock("""{"_attrs": {"put_window": null}}"""))
+        val data = ByteArray(5000) { (it * 7).toByte() }
+        d.put(data, "/home/root/w.bin")
+        assertContentEquals(data, d.get("/home/root/w.bin"))
+    }
+
     @Test fun `a corrupted download is caught`() {
         val t = mock("""{"_attrs": {"corrupt_get": true}}""")
         val d = connect(t)

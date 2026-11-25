@@ -28,6 +28,10 @@ DEFAULT_CHUNK = 768
 FINALS = ("OK", "ERR")
 
 
+
+# The most D lines a PUT keeps unacknowledged, whatever the device offers.
+PUT_WINDOW_MAX = 4
+
 class Timing(object):
     """Every wait, in seconds, in one place so tests can shrink them."""
     settle = 0.25         # after a Ctrl+C, before reading what came back
@@ -473,17 +477,29 @@ class LinkClient(object):
                 raise f.error()
             if f.type == "OK":
                 raise ProtocolError("PUT was answered OK before READY")
+            kv = f.kv()
             try:
-                chunk = max(1, min(int(f.kv().get("chunk", self.chunk)), self.chunk))
+                chunk = max(1, min(int(kv.get("chunk", self.chunk)), self.chunk))
             except ValueError:
                 chunk = self.chunk
+            # How many D lines may be unacknowledged. Firmware that does not say
+            # gets one at a time, as the protocol always allowed. Two keeps the
+            # next line waiting on the device while it writes this one.
+            try:
+                window = max(1, min(int(kv.get("window", 1)), PUT_WINDOW_MAX))
+            except ValueError:
+                window = 1
             sent = 0
+            acked_upto = 0
+            pending = []          # cumulative byte counts awaiting their ACK
             if progress:
                 progress(0, len(data))
-            while sent < len(data):
-                piece = data[sent:sent + chunk]
-                self.t.write(b"D " + base64.b64encode(piece) + b"\n")
-                sent += len(piece)
+            while acked_upto < len(data):
+                while sent < len(data) and len(pending) < window:
+                    piece = data[sent:sent + chunk]
+                    self.t.write(b"D " + base64.b64encode(piece) + b"\n")
+                    sent += len(piece)
+                    pending.append(sent)
                 while True:
                     f = self.frame(self.timing.transfer)
                     if f.type == "ACK":
@@ -492,16 +508,18 @@ class LinkClient(object):
                         self.busy = None
                         raise f.error()
                     if f.type == "OK":
-                        raise ProtocolError("PUT ended early, after {} bytes".format(sent))
+                        raise ProtocolError("PUT ended early, after {} bytes".format(acked_upto))
                 try:
                     acked = int(f.rest.split(" ")[0])
                 except ValueError:
                     raise ProtocolError("malformed ACK: {!r}".format(f.raw))
-                if acked != sent:
+                if acked != pending[0]:
                     raise ProtocolError("the device acknowledged {} bytes, {} were sent"
-                                        .format(acked, sent))
+                                        .format(acked, pending[0]))
+                pending.pop(0)
+                acked_upto = acked
                 if progress:
-                    progress(sent, len(data))
+                    progress(acked_upto, len(data))
             f = self.final(self.timing.transfer)
             self.busy = None
             if f.type == "ERR":
