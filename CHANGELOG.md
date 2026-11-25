@@ -1,11 +1,13 @@
 # Changelog
 
 
-## Unreleased
+## v1.2.0, 2026-11-25
 
 ### Improved
 
-- Sending files is faster on firmware that allows it: `rpc put` keeps the next piece on its way while the board writes the last (the `window` a board announces in its `READY`, LINK.md). 35 to 51 KB/s on a Pico 2 W; older firmware is sent to as before, one piece at a time.
+- Sending files is faster on firmware that allows it: `rpc put` (and the Android app) keeps the next piece on its way while the board writes the last (the `window` a board announces in its `READY`, LINK.md). 35 to 51 KB/s on a Pico 2 W; older firmware is sent to as before, one piece at a time.
+- The network bridge passes the board's own User-Agent to the server, so a page answers a board going online through Studio the way it would answer the board on Wi-Fi. DuckDuckGo's text version, which the board's `browse` uses for searches, turned the bridge's own agent away.
+- After following redirects, the bridge tells the board where the page ended up (`X-RPC-Final-URL`), so `browse` reads relative links against the right address.
 
 ## v1.1.0, 2026-11-23
 
