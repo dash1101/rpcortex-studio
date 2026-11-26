@@ -109,6 +109,13 @@ class TestFlash(unittest.TestCase):
         with self.assertRaises(RpcError):
             flash.uf2_chip(b"short")
 
+    def test_absolute_uf2_with_a_partition_table_is_rp2350(self):
+        # RPCortex's RP2350 .uf2: ABSOLUTE family, the partition table first.
+        data = bytearray(uf2([0xE48BFF57] * 2))
+        struct.pack_into("<I", data, 32, 0xFFFFDED3)          # block marker at 0x10000000
+        self.assertEqual(flash.uf2_chip(bytes(data)), "RP2350")
+        self.assertIsNone(flash.uf2_chip(uf2([0xE48BFF57] * 2)), "absolute alone names no chip")
+
     def test_real_images_if_built(self):
         support.need_os_repo(self)
         out = os.path.join(support.REPO, "out")
