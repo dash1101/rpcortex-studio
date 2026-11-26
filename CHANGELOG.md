@@ -2,6 +2,13 @@
 
 
 
+
+## v1.3.1, 2026-11-26
+
+### Fixed
+
+- `rpc flash` recognises RPCortex's RP2350 images from v2.0.697 on, which carry the partition table for A/B firmware and say so in a way the old check did not read.
+
 ## v1.3.0, 2026-11-25
 
 ### New
