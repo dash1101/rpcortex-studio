@@ -32,6 +32,10 @@ FAMILIES = {
 # RP2350 image opens with one absolute block that the ROM is told to ignore.
 
 
+UF2_FAMILY_ABSOLUTE = 0xE48BFF57
+PICOBIN_BLOCK_START = 0xFFFFDED3
+
+
 def uf2_chip(data):
     """The chip a UF2 image is for: 'RP2040', 'RP2350' or None if it does not say.
     Raises RpcError when it is not a UF2 file at all."""
@@ -47,6 +51,15 @@ def uf2_chip(data):
             fam, = struct.unpack_from("<I", data, off + 28)
             if fam in FAMILIES:
                 chips.add(FAMILIES[fam])
+            elif fam == UF2_FAMILY_ABSOLUTE:
+                # Written where it says, whatever the chip. RPCortex's RP2350 images
+                # are absolute (they carry the partition table for A/B firmware), and
+                # a partition table, whose block starts at flash offset 0, is RP2350's
+                # alone.
+                addr, = struct.unpack_from("<I", data, off + 12)
+                marker, = struct.unpack_from("<I", data, off + 32)
+                if addr == 0x10000000 and marker == PICOBIN_BLOCK_START:
+                    chips.add("RP2350")
     if len(chips) > 1:
         raise RpcError("the UF2 image mixes RP2040 and RP2350 blocks")
     return chips.pop() if chips else None
