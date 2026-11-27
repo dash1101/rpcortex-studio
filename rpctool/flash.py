@@ -9,6 +9,7 @@ alone.
 import glob
 import os
 import shutil
+import re
 import struct
 import subprocess
 import sys
@@ -193,15 +194,44 @@ def _quiet(cmd):
     return r.returncode
 
 
-def picotool_load(uf2_path, runner=None, which=None):
+def picotool_load(uf2_path, runner=None, which=None, serial=None):
     """`picotool load <uf2>` then `picotool reboot`. False when picotool is not
-    installed; raises when it is and fails."""
+    installed; raises when it is and fails. With `serial`, only the board with
+    that USB serial number is touched: with two boards in BOOTSEL, picotool on
+    its own takes whichever it finds first."""
     which = which or shutil.which
     runner = runner or _quiet
     tool = which("picotool")
     if not tool:
         return False
-    if runner([tool, "load", uf2_path]) != 0:
+    sel = ["--ser", serial] if serial else []
+    if runner([tool, "load"] + sel + [uf2_path]) != 0:
         raise RpcError("picotool load failed (see above)")
-    runner([tool, "reboot"])
+    runner([tool, "reboot"] + sel)
     return True
+
+
+IMAGE_MARKER = b"RPCORTEX-IMAGE board="
+
+
+def uf2_board(data):
+    """The board a .uf2 says it is for ("pico2_w"), from the marker RPCortex
+    images carry from v2.0.706 on; None without one. The payloads are put back
+    in address order first, since the marker can straddle two blocks."""
+    blocks = []
+    for off in range(0, len(data) - 511, 512):
+        b = data[off:off + 512]
+        m0, m1, _flags, addr, size = struct.unpack_from("<IIIII", b, 0)
+        if m0 != UF2_MAGIC0 or m1 != UF2_MAGIC1 or size > 476:
+            continue
+        blocks.append((addr, b[32:32 + size]))
+    blocks.sort(key=lambda x: x[0])
+    image = b"".join(p for _, p in blocks)
+    at = image.find(IMAGE_MARKER)
+    while at >= 0:
+        rest = image[at + len(IMAGE_MARKER):at + len(IMAGE_MARKER) + 32]
+        name = re.match(rb"[a-z0-9_]+", rest)
+        if name and len(rest) > name.end() and rest[name.end():name.end() + 1] in (b" ", b"\0"):
+            return name.group(0).decode()
+        at = image.find(IMAGE_MARKER, at + 1)
+    return None

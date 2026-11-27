@@ -633,16 +633,55 @@ def _exec_simple(command):
     return run
 
 
+def _usb_serial(port):
+    """The USB serial number of the board on `port`, for picotool --ser."""
+    try:
+        real = os.path.realpath(port)
+        for p in transport.list_candidates():
+            if p.device in (port, real) and p.serial_number:
+                return p.serial_number
+    except RpcError:
+        pass
+    return None
+
+
+def _board_on(ctx):
+    """Which board is on the console ("pico2_w"), asked over the link; None
+    when it cannot be asked (a login prompt, older firmware, busy)."""
+    try:
+        return ctx.device().hello.get("board") or None
+    except RpcError:
+        return None
+    finally:
+        ctx.close()
+
+
 def cmd_flash(ctx, a):
     data = _read_local(a.file)
     chip = _flash.uf2_chip(data)
+    want = _flash.uf2_board(data)
     drive = a.drive
     port = None
+    serial = None
     if not drive and not a.no_reset:
         try:
             port = ctx.port()
         except RpcError:
             port = None
+        if port is not None:
+            serial = _usb_serial(port)
+            # The chip cannot tell a Pico 2 from a Pico 2 W; the board can. An
+            # image for the other one boots, then waits for hardware that is
+            # not there, and the recovery ladder never sees a failed start.
+            if want and not a.force:
+                have = _board_on(ctx)
+                if have and have != want:
+                    err("{} is for a {}, but the board on {} is a {}. Nothing was written "
+                        "(--force writes it anyway).".format(os.path.basename(a.file), want, port, have))
+                    return 1
+                if not have:
+                    ctx.note("Could not ask the board which it is; {} is for a {}.".format(
+                        os.path.basename(a.file), want))
         if port is None:
             present = _flash.find_drives()
             if present:
@@ -652,7 +691,7 @@ def cmd_flash(ctx, a):
                 # picotool below, or the drive if one mounts in a moment.
                 ctx.note("A board is waiting in BOOTSEL.")
                 drive = _flash.wait_for_drive(min(a.wait, 3))
-                if not drive and sys.platform.startswith("linux") and _flash.picotool_load(a.file):
+                if not drive and sys.platform.startswith("linux") and _flash.picotool_load(a.file, serial=serial):
                     out("Loaded {} with picotool.".format(a.file))
                     return 0
             else:
@@ -666,7 +705,7 @@ def cmd_flash(ctx, a):
         ctx.note("Waiting for the BOOTSEL drive...")
         drive = _flash.wait_for_drive(a.wait)
     if not drive:
-        if sys.platform.startswith("linux") and _flash.picotool_load(a.file):
+        if sys.platform.startswith("linux") and _flash.picotool_load(a.file, serial=serial):
             out("Loaded {} with picotool.".format(a.file))
             return 0
         if _flash.bootsel_on_usb():
@@ -909,7 +948,7 @@ def build_parser():
                    help="the board is already in BOOTSEL; do not reset it")
     p.add_argument("--drive", default=None, help="the BOOTSEL drive's mount point")
     p.add_argument("--wait", type=float, default=20.0, help="seconds to wait for the drive")
-    p.add_argument("--force", action="store_true", help="write even if the chip does not match")
+    p.add_argument("--force", action="store_true", help="write even if the chip or the board does not match")
     p.add_argument("--no-wait-port", action="store_true",
                    help="do not wait for the console to come back")
 

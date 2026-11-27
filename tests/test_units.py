@@ -109,6 +109,25 @@ class TestFlash(unittest.TestCase):
         with self.assertRaises(RpcError):
             flash.uf2_chip(b"short")
 
+    def test_uf2_board_reads_the_marker_across_blocks(self):
+        payload = bytearray(b"\xee" * 1024)
+        marker = b"RPCORTEX-IMAGE board=pico2_w build=706\0"
+        payload[256 - 10:256 - 10 + len(marker)] = marker          # straddles blocks 0 and 1
+        out = b""
+        for i in range(4):
+            out += struct.pack("<8I", 0x0A324655, 0x9E5D5157, 0x2000, 0x10000000 + 256 * i,
+                               256, i, 4, 0xE48BFF59)
+            out += bytes(payload[256 * i:256 * i + 256]) + b"\0" * 220 + struct.pack("<I", 0x0AB16F30)
+        self.assertEqual(flash.uf2_board(out), "pico2_w")
+        self.assertIsNone(flash.uf2_board(uf2([0xE48BFF59] * 3)), "no marker: no board")
+
+    def test_picotool_is_told_which_board(self):
+        calls = []
+        flash.picotool_load("x.uf2", runner=lambda c: calls.append(c) or 0, which=lambda n: "/usr/bin/picotool",
+                            serial="BFBD45F87576C0AD")
+        self.assertEqual(calls[0], ["/usr/bin/picotool", "load", "--ser", "BFBD45F87576C0AD", "x.uf2"])
+        self.assertEqual(calls[1], ["/usr/bin/picotool", "reboot", "--ser", "BFBD45F87576C0AD"])
+
     def test_absolute_uf2_with_a_partition_table_is_rp2350(self):
         # RPCortex's RP2350 .uf2: ABSOLUTE family, the partition table first.
         data = bytearray(uf2([0xE48BFF57] * 2))
