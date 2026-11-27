@@ -228,5 +228,15 @@ class TestRealSerialOverPty(unittest.TestCase):
         self.assertFalse(self.dev.in_link)
 
 
+
+class TestAndroidThemes(unittest.TestCase):
+    def test_theme_kt_matches_themes_py(self):
+        # The phone app's colours are written from rpctool/tui/themes.py; an edit to one alone fails here.
+        import subprocess
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        r = subprocess.run([sys.executable, os.path.join(root, "tools", "theme_kt.py"), "--check"],
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
 if __name__ == "__main__":
     unittest.main()

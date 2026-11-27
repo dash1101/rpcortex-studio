@@ -3,6 +3,19 @@
 
 
 
+## v1.4.0, 2026-11-26
+
+### New
+
+- The Android app updates itself: Settings shows the version you have and the latest release, and updates in one tap. The download is checked against the release's `SHA256SUMS` and against the app itself (the same app, a newer version) before Android is asked to install it, and Android asks you first. It can look for a new version when the app opens (on by default; a quick call to GitHub, nothing downloaded without you).
+- A Settings page on Android (the gear at the top right): updates, the theme (now with the phone's own Material You colours), keeping the screen on while a board is connected (on by default, so a long transfer or firmware update is not cut off), and links to the source and to report a problem.
+- RPCortex Studio is in Orbit for Android: it installs and updates it like the other apps.
+
+### Improved
+
+- The Android app looks like Orbit now: boxes with their title in the border, square buttons, a status square on every line, and a confirmation before restarting the board.
+- The launcher icon is centred on the mark, and sits inside the round icon shape on every launcher.
+
 ## v1.3.1, 2026-11-26
 
 ### Fixed

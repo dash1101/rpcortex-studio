@@ -47,6 +47,7 @@ class MainActivity : ComponentActivity() {
         ContextCompat.registerReceiver(this, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         session.scan()
         handle(intent)
+        if (session.checkAtStart && savedInstanceState == null) SelfUpdate.check(this, quiet = true)
         setContent { StudioApp(session, onConnect = ::ask) }
     }
 

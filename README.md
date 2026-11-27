@@ -50,10 +50,16 @@ into the phone's USB-C port (or through a USB OTG adapter) and Android offers to
 open the app; it powers the board too.
 
 Each release has `rpcortex-studio-android.apk`, listed in `SHA256SUMS` with the rest.
-It needs Android 8.0 or later. The app talks to the board with its own small USB
+It needs Android 8.0 or later. Orbit for Android installs and updates it, and the app
+can update itself from Settings: it downloads the latest release's APK, checks it
+against that release's `SHA256SUMS` and against itself (same app, newer version),
+and hands it to Android, which asks before installing. The app talks to the board with its own small USB
 serial driver, since Android has none an app can use; the rest of it is the same
 link protocol client as here, in Kotlin (`android/core`), tested against the same
 mock device and against a real board.
+
+Its colours come from `rpctool/tui/themes.py`: `python3 tools/theme_kt.py` writes
+`Theme.kt` from it, and the tests fail when the two disagree.
 
 Building it: `cd android && ./gradlew :app:assembleDebug` (needs the Android SDK;
 `android/local.properties` names it). `./gradlew :core:test` runs the link client's

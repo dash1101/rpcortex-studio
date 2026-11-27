@@ -51,6 +51,9 @@ class Session(app: Application) : AndroidViewModel(app) {
     var message by mutableStateOf<Pair<String, Kind>?>(null); private set
     var sudo by mutableStateOf<SudoAsk?>(null); private set
     var theme by mutableStateOf(prefs.getString("theme", "tui") ?: "tui"); private set
+    /** Settings: keep the phone's screen on while a board is connected; look for a new Studio at start. */
+    var keepScreenOn by mutableStateOf(prefs.getBoolean("keep_screen_on", true)); private set
+    var checkAtStart by mutableStateOf(prefs.getBoolean("check_at_start", true)); private set
     var boards by mutableStateOf<List<UsbDevice>>(emptyList()); private set
 
     // Files
@@ -66,6 +69,8 @@ class Session(app: Application) : AndroidViewModel(app) {
 
     fun say(text: String, kind: Kind = Kind.INFO) { message = text to kind }
     fun chooseTheme(name: String) { theme = name; prefs.edit().putString("theme", name).apply() }
+    fun chooseKeepScreenOn(on: Boolean) { keepScreenOn = on; prefs.edit().putBoolean("keep_screen_on", on).apply() }
+    fun chooseCheckAtStart(on: Boolean) { checkAtStart = on; prefs.edit().putBoolean("check_at_start", on).apply() }
 
     fun scan() { boards = UsbTransport.boards(usb) }
 
