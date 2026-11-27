@@ -4,6 +4,13 @@
 
 
 
+
+## v1.5.1, 2026-11-26
+
+### Fixed
+
+- Forgetting a paired board from its device tab, while it is plugged in, takes this phone's key off it; 1.5.0 said so but offered forget only on the start screen, where no board is connected, so the key always stayed. The key is only taken off the board that was paired (same account and the same SSH key), never another board with an account of the same name. Forgetting from the start screen forgets it on the phone only, and says so.
+
 ## v1.5.0, 2026-11-26
 
 ### New

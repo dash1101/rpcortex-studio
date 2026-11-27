@@ -498,8 +498,15 @@ fun StudioApp(s: Session, onConnect: (android.hardware.usb.UsbDevice) -> Unit) {
                  "The board needs to be on Wi-Fi, with its SSH server on (pairing turns it on, with sudo).")
         }
         Spacer(Modifier.height(8.dp))
-        TuiButton(if (known != null) "pair again" else "pair for wi-fi", kind = if (known != null) Kind.NORMAL else Kind.GO,
-                  enabled = s.busy == null) { s.pairWifi() }
+        var forgetting by remember { mutableStateOf(false) }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TuiButton(if (known != null) "pair again" else "pair for wi-fi", kind = if (known != null) Kind.NORMAL else Kind.GO,
+                      enabled = s.busy == null) { s.pairWifi() }
+            if (known != null) TuiButton("forget", kind = Kind.DANGER, enabled = s.busy == null) { forgetting = true }
+        }
+        if (forgetting && known != null) Confirm("Forget ${known.name}? This phone's key comes off the board, and it is no longer " +
+            "reachable over Wi-Fi until it is paired again.", yes = "forget", danger = true,
+            onYes = { s.forget(known); forgetting = false }, onNo = { forgetting = false })
         if (s.hello["build"]?.toIntOrNull()?.let { it < 700 } == true) {
             Spacer(Modifier.height(4.dp))
             Txt("This firmware is too old to be reached over Wi-Fi: v2.0.700 and later run link mode over SSH. " +

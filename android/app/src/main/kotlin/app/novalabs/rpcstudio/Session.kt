@@ -368,12 +368,15 @@ class Session(app: Application) : AndroidViewModel(app) {
     /** Forget a board here, and take this phone's key off it when it is connected now. */
     fun forget(p: Paired) {
         val d = dev
-        val here = d != null && viaWifi == null && d.hello["user"] == p.user
+        // Only the board this is: plugged in by USB, same account, and the same SSH key as was
+        // paired. Two boards with a "dash" account must not lose each other's pairing.
+        val here = d != null && viaWifi == null && d.hello["user"] == p.user && pairedFingerprint == p.fingerprint
         savePaired(paired.filterNot { it == p })
         if (here) job("taking this phone's key off the board") { dd ->
             Pairing.unpair(dd, phoneKey())
             post { say("Forgotten, and this phone's key is off ${p.name}.", Kind.OK) }
-        } else say("Forgotten here. Its key stays on the board until you remove it there (~/.ssh/authorized_keys) or forget it while connected over USB.")
+        } else say("Forgotten here. Its key stays on the board until you remove it there (~/.ssh/authorized_keys), " +
+                   "or forget it from its device tab while it is plugged in.")
     }
 
     fun setAddress(p: Paired, host: String) {
