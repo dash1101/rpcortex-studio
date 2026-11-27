@@ -5,6 +5,16 @@
 
 
 
+
+## v1.5.2, 2026-11-27
+
+### Fixed
+
+- `rpc flash` refuses firmware built for a different board. A Pico 2 and a Pico 2 W have the same chip, so the image for one could be written to the other, which then starts and stops answering. RPCortex images from v2.0.709 on name their board, and `rpc flash` asks the board which it is before writing; `--force` writes it anyway.
+- With two boards plugged in, `rpc flash` tells picotool which board to write (by its USB serial number); before, picotool took whichever it found first.
+- `rpc flash` uses a board already waiting in BOOTSEL even when nothing has mounted its drive, without needing `--no-reset`.
+- A command that restarts the board on purpose (`reboot`, `update online`, `update from-file`, `update rollback --now`) ends with "The board is restarting." instead of an error about the port going away.
+
 ## v1.5.1, 2026-11-26
 
 ### Fixed
