@@ -123,7 +123,7 @@ object SelfUpdate {
                 val archived = if (Build.VERSION.SDK_INT >= 33) pm.getPackageArchiveInfo(file.path, PackageManager.PackageInfoFlags.of(0))
                                else @Suppress("DEPRECATION") pm.getPackageArchiveInfo(file.path, 0)
                 if (archived == null || archived.packageName != app.packageName)
-                    throw Exception("The download is not RPCortex Studio's app, so it was not installed.")
+                    throw Exception("The download is not RPC Studio's app, so it was not installed.")
                 val here = info(app)
                 if (here != null && code(archived) <= code(here)) {
                     post { state = State.CURRENT }
@@ -213,7 +213,7 @@ object SelfUpdate {
             PackageInstaller.STATUS_FAILURE_CONFLICT, PackageInstaller.STATUS_FAILURE_INCOMPATIBLE ->
                 fail("Android would not install it over this copy: they are signed with different keys. Remove the app, then install it again.")
             PackageInstaller.STATUS_FAILURE_STORAGE -> fail("There is not enough space on this phone.")
-            PackageInstaller.STATUS_FAILURE_BLOCKED -> fail("This phone blocks installing apps from RPCortex Studio.")
+            PackageInstaller.STATUS_FAILURE_BLOCKED -> fail("This phone blocks installing apps from RPC Studio.")
             else -> fail("Android could not install the update" + (message?.let { ": $it" } ?: "."))
         }
     }

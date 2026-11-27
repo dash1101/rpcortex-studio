@@ -67,4 +67,44 @@ class BoardTest {
             assertEquals("after", d.exec("echo after").text.trim())
         }
     }
+
+    /** Pairing over USB, then link mode over SSH. RPC_PORT and RPC_SSH=1, with the board on Wi-Fi. */
+    @Test fun `pairing, then link mode over ssh`() {
+        val path = System.getProperty("rpc.port")
+        assumeTrue(path != null && System.getProperty("rpc.ssh") != null, "RPC_PORT and RPC_SSH are not set")
+        val pw = System.getProperty("rpc.password")
+        val usb = {
+            val t = SerialTransport(path!!)
+            try { Device(t, sudoPassword = pw?.let { p -> { p } }).connect() } catch (e: Exception) { t.close(); throw e }
+        }
+        val key = SshKey.generate("studio-test")
+        val paired = usb().use { d -> Pairing.pair(d, key) }
+        println("paired: $paired")
+        assertTrue(paired.fingerprint.startsWith("SHA256:"))
+
+        Device(SshTransport(paired.host, paired.port, paired.user, key, paired.fingerprint)).connectLinked().use { d ->
+            assertEquals(paired.user, d.hello["user"])
+            assertTrue("RPCortex" in d.exec("ver").text)
+            val data = ByteArray(50_000) { (it * 13 + 1).toByte() }
+            val t0 = System.nanoTime()
+            d.put(data, "/tmp/ssh-test.bin")
+            val ms = (System.nanoTime() - t0) / 1_000_000
+            println("put 50 KB over ssh: $ms ms (${50_000 * 1000L / maxOf(ms, 1) / 1024} KB/s)")
+            assertContentEquals(data, d.get("/tmp/ssh-test.bin"))
+            d.rm("/tmp/ssh-test.bin")
+            d.link!!.ping()
+
+            // One host tool at a time: the console says so, in words.
+            val busy = runCatching { usb().close() }.exceptionOrNull()
+            assertTrue(busy is RpcError && "already talking" in (busy.message ?: ""), "$busy")
+        }
+
+        // A board presenting another key is refused before anything is sent.
+        val wrong = runCatching { SshTransport(paired.host, paired.port, paired.user, key, "SHA256:AAAA") }.exceptionOrNull()
+        assertTrue(wrong is RpcError && "not the one paired" in (wrong.message ?: ""), "$wrong")
+
+        usb().use { d -> Pairing.unpair(d, key) }
+        val gone = runCatching { SshTransport(paired.host, paired.port, paired.user, key, paired.fingerprint) }.exceptionOrNull()
+        assertTrue(gone is RpcError && "turned this phone's key away" in (gone.message ?: ""), "$gone")
+    }
 }

@@ -49,6 +49,11 @@ ways, packages, the firmware, and a command line, in Orbit's themes. Plug the bo
 into the phone's USB-C port (or through a USB OTG adapter) and Android offers to
 open the app; it powers the board too.
 
+On the phone it is called RPC Studio. A board on firmware v2.0.700 or later can also
+be reached over Wi-Fi: pair it once over the cable (its device tab), and the phone
+connects to it over SSH from then on, with a key of its own and the board's host
+key pinned at pairing (LINK.md, "Over SSH", in the RPCortex repository).
+
 Each release has `rpcortex-studio-android.apk`, listed in `SHA256SUMS` with the rest.
 It needs Android 8.0 or later. Orbit for Android installs and updates it, and the app
 can update itself from Settings: it downloads the latest release's APK, checks it

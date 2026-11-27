@@ -51,6 +51,11 @@ fun rnorm(path: String, cwd: String = "/"): String {
     return "/" + out.joinToString("/")
 }
 
+/** What a board already linked to another host says, in words for a person. */
+const val BUSY = "The board is already talking to another host tool (Studio on a phone over Wi-Fi, or " +
+    "another program on its console): one at a time. Close that one; a phone that has gone quiet is let go " +
+    "within 90 seconds."
+
 class Device(
     val t: Transport,
     val user: String? = null,
@@ -113,9 +118,25 @@ class Device(
                     "This firmware predates link mode (v2.00-beta). Update it first: the Firmware " +
                     "screen can write a new image over BOOTSEL.")
                 "login" -> login()
+                "busy" -> throw RpcError(BUSY)
             }
         }
         throw RpcError("The device did not answer. Is it running RPCortex, and is the shell running?")
+    }
+
+    /**
+     * For a transport that started link mode itself (an SSH session running `link`): wait for
+     * its HELLO. Nothing is typed first: on SSH a Ctrl+C would end link mode, not a transfer.
+     */
+    fun connectLinked(): Device {
+        when (awaitHello()) {
+            "hello" -> return linked()
+            "busy" -> throw RpcError(BUSY)
+            "prompt-only" -> throw NotSupported(
+                "This board's firmware runs link mode only on its console, not over SSH. Update it " +
+                "(v2.0.700 or later), over USB or over the air, and pair again.")
+        }
+        throw RpcError("The board answered over SSH but never started link mode.")
     }
 
     private fun linked(): Device {
@@ -159,6 +180,8 @@ class Device(
                 continue
             }
             val clean = Ansi.strip(buf)
+            if ("Link mode is already running" in clean) return "busy"
+            if ("runs only at the prompt" in clean) return "prompt-only"
             if ("'link' is not a command" in clean) { collect(timing.settle); return "old" }
             if ("Username" in lastLine(clean)) return "login"
             val fs = buf.indexOf(FRAME_START)

@@ -212,7 +212,7 @@ fun StudioApp(s: Session, onConnect: (android.hardware.usb.UsbDevice) -> Unit) {
     Column(modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (SelfUpdate.state == SelfUpdate.State.AVAILABLE) {
             LegendBox("update", borderColor = p.accent) {
-                Txt("RPCortex Studio ${SelfUpdate.release?.version} is out.", bold = true)
+                Txt("RPC Studio ${SelfUpdate.release?.version} is out.", bold = true)
                 Note("You have ${SelfUpdate.installedVersion(LocalContext.current)}. It installs from Settings, checked against its release.")
                 Spacer(Modifier.height(8.dp))
                 TuiButton("open settings", kind = Kind.PRIMARY, onClick = openSettings)
@@ -236,6 +236,7 @@ fun StudioApp(s: Session, onConnect: (android.hardware.usb.UsbDevice) -> Unit) {
             Spacer(Modifier.height(8.dp))
             TuiButton("look again") { s.scan() }
         }
+        WifiBox(s)
         if (BuildConfig.DEBUG) {
             var addr by remember { mutableStateOf("10.0.2.2:7777") }
             LegendBox("debug: a console relayed over tcp") {
@@ -250,9 +251,62 @@ fun StudioApp(s: Session, onConnect: (android.hardware.usb.UsbDevice) -> Unit) {
         }
         LegendBox("what it does") {
             Note("Files on the board, packages from the RPCortex repository, firmware updates, its health, and a command " +
-                 "line, over the USB cable. The board stays usable at its own prompt when you disconnect.")
+                 "line, over the USB cable or Wi-Fi. The board stays usable at its own prompt when you disconnect.")
         }
         Spacer(Modifier.height(16.dp))
+    }
+}
+
+/** Boards paired with this phone: connect over Wi-Fi, change the address, forget. */
+@Composable private fun WifiBox(s: Session) {
+    val p = LocalPalette.current
+    var editing by remember { mutableStateOf<app.novalabs.rpcstudio.link.Paired?>(null) }
+    var forgetting by remember { mutableStateOf<app.novalabs.rpcstudio.link.Paired?>(null) }
+    LegendBox("over wi-fi", right = "${s.paired.size}") {
+        if (s.paired.isEmpty()) {
+            Txt("No board is paired.", bold = true)
+            Note("Connect a board by USB once, and pair it on its device tab. After that it connects over Wi-Fi when " +
+                 "the phone and the board are on the same network: SSH, with a key this phone keeps, to the board " +
+                 "whose key was read over the cable.")
+        }
+        for (b in s.paired) {
+            Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Square(p.accent, modifier = Modifier.padding(end = 10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Txt(b.name, bold = true, maxLines = 1)
+                        Txt("${b.user}@${b.host}" + (if (b.port != 22) ":${b.port}" else "") + (if (b.board.isNotEmpty()) " · ${b.board}" else ""),
+                            color = p.muted, size = 12.sp, maxLines = 1)
+                    }
+                    TuiButton("connect", kind = Kind.GO, enabled = s.conn == Session.Conn.OFF) { s.connectWifi(b) }
+                }
+                Row(Modifier.padding(start = 18.dp, top = 2.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Txt("address", Modifier.clickable { editing = b }.padding(vertical = 4.dp), color = p.muted, size = 12.5.sp)
+                    Txt("forget", Modifier.clickable { forgetting = b }.padding(vertical = 4.dp), color = p.down, size = 12.5.sp)
+                }
+            }
+        }
+    }
+    editing?.let { b ->
+        var host by remember(b) { mutableStateOf(b.host) }
+        Dialog(onDismissRequest = { editing = null }) {
+            Box(Modifier.background(p.bg).padding(4.dp)) {
+                LegendBox("address of ${b.name}") {
+                    Note("Where the board is on this network: 'wifi status' on it shows the address. Pairing again over USB updates it too.")
+                    Spacer(Modifier.height(10.dp))
+                    Field(host, { host = it }, "10.0.0.20", onDone = { s.setAddress(b, host); editing = null })
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        TuiButton("save", kind = Kind.GO, enabled = host.isNotBlank()) { s.setAddress(b, host); editing = null }
+                        TuiButton("cancel") { editing = null }
+                    }
+                }
+            }
+        }
+    }
+    forgetting?.let { b ->
+        Confirm("Forget ${b.name}? To connect over Wi-Fi again it has to be paired again over USB.", yes = "forget", danger = true,
+                onYes = { s.forget(b); forgetting = null }, onNo = { forgetting = null })
     }
 }
 
@@ -293,7 +347,7 @@ fun StudioApp(s: Session, onConnect: (android.hardware.usb.UsbDevice) -> Unit) {
             }
         }
         LegendBox("about") {
-            Txt("RPCortex Studio ${SelfUpdate.installedVersion(ctx)} for Android", bold = true)
+            Txt("RPC Studio ${SelfUpdate.installedVersion(ctx)} for Android", bold = true)
             Note("By NovaLabs. Talks to boards running RPCortex v2 (Vela II) over the link protocol, the same as `rpc` on a computer.")
             Spacer(Modifier.height(6.dp))
             LinkOut("source and releases", "https://github.com/${SelfUpdate.REPO}")
@@ -353,7 +407,7 @@ fun StudioApp(s: Session, onConnect: (android.hardware.usb.UsbDevice) -> Unit) {
         }
         if (SelfUpdate.state == SelfUpdate.State.AVAILABLE && !SelfUpdate.mayInstall(ctx)) {
             Spacer(Modifier.height(4.dp))
-            Note("Android asks once whether RPCortex Studio may install apps. Allow it, come back, and update.")
+            Note("Android asks once whether RPC Studio may install apps. Allow it, come back, and update.")
         }
         val notes = rel?.notes?.trim().orEmpty()
         if (SelfUpdate.state == SelfUpdate.State.AVAILABLE && notes.isNotEmpty()) {
@@ -387,8 +441,10 @@ fun StudioApp(s: Session, onConnect: (android.hardware.usb.UsbDevice) -> Unit) {
             Kv("build", h["build"] ?: "-")
             Kv("board", h["board"] ?: "-")
             Kv("account", h["user"] ?: "-")
-            Kv("link", "protocol ${h["proto"] ?: "1"}" + if (h["bridge"] == "1") ", no network of its own" else "")
+            Kv("link", (if (s.viaWifi != null) "Wi-Fi (SSH), " else "USB, ") + "protocol ${h["proto"] ?: "1"}" +
+                       if (h["bridge"] == "1") ", no network of its own" else "")
         }
+        if (s.viaWifi == null) PairBox(s)
         LegendBox("health") {
             val st = s.status
             if (st == null) Row { Spinner(); Spacer(Modifier.width(8.dp)); Txt("reading...", color = p.muted, size = 13.sp) } else {
@@ -417,6 +473,39 @@ fun StudioApp(s: Session, onConnect: (android.hardware.usb.UsbDevice) -> Unit) {
     }
     if (confirmRestart) Confirm("Restart ${s.name.ifEmpty { "the board" }}? Whatever it is running stops.", yes = "restart",
                                 danger = true, onYes = { s.reboot(); confirmRestart = false }, onNo = { confirmRestart = false })
+}
+
+/** On a USB connection: pair this board for Wi-Fi, or say it is paired. */
+@Composable private fun PairBox(s: Session) {
+    val p = LocalPalette.current
+    LaunchedEffect(Unit) { if (s.pairedFingerprint == null) s.readFingerprint() }
+    val known = s.isPaired()
+    val wifi = s.hello["bridge"] != "1"
+    LegendBox("wi-fi") {
+        if (!wifi) {
+            Note("This board has no Wi-Fi of its own, so it connects over USB only.")
+            return@LegendBox
+        }
+        if (known != null) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Square(p.ok); Spacer(Modifier.width(10.dp))
+                Txt("paired · ${known.user}@${known.host}", bold = true, maxLines = 1)
+            }
+            Note("It is on the start screen under Wi-Fi. Pair again if its address changed.")
+        } else {
+            Note("Pair it once, here over the cable, and it connects over Wi-Fi from then on: the board takes this " +
+                 "phone's key for ${s.hello["user"] ?: "this account"}, and the phone keeps the board's address and its SSH key. " +
+                 "The board needs to be on Wi-Fi, with its SSH server on (pairing turns it on, with sudo).")
+        }
+        Spacer(Modifier.height(8.dp))
+        TuiButton(if (known != null) "pair again" else "pair for wi-fi", kind = if (known != null) Kind.NORMAL else Kind.GO,
+                  enabled = s.busy == null) { s.pairWifi() }
+        if (s.hello["build"]?.toIntOrNull()?.let { it < 700 } == true) {
+            Spacer(Modifier.height(4.dp))
+            Txt("This firmware is too old to be reached over Wi-Fi: v2.0.700 and later run link mode over SSH. " +
+                "Update it on the firmware tab first.", color = p.warn, size = 12.5.sp)
+        }
+    }
 }
 
 @Composable private fun FilesScreen(s: Session) {

@@ -15,6 +15,9 @@ kotlin {
 }
 
 dependencies {
+    // SSH, for link mode over Wi-Fi (SshTransport): JSch, the maintained fork, which does what a
+    // board offers (ECDSA P-256, ECDH or curve25519, AES-GCM) with the platform's own crypto.
+    implementation("com.github.mwiede:jsch:0.2.20")
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.3")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.11.3")
@@ -28,5 +31,6 @@ tasks.test {
     systemProperty("studio.root", rootDir.parentFile.absolutePath)
     System.getenv("RPC_PORT")?.let { systemProperty("rpc.port", it) }
     System.getenv("RPC_PASSWORD")?.let { systemProperty("rpc.password", it) }
+    System.getenv("RPC_SSH")?.let { systemProperty("rpc.ssh", it) }
     testLogging { events("failed"); showStandardStreams = false; exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL }
 }

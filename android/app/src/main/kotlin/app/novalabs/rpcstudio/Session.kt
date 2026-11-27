@@ -12,7 +12,11 @@ import androidx.lifecycle.AndroidViewModel
 import app.novalabs.rpcstudio.link.Device
 import app.novalabs.rpcstudio.link.DeviceGone
 import app.novalabs.rpcstudio.link.Entry
+import app.novalabs.rpcstudio.link.Paired
+import app.novalabs.rpcstudio.link.Pairing
 import app.novalabs.rpcstudio.link.Parse
+import app.novalabs.rpcstudio.link.SshKey
+import app.novalabs.rpcstudio.link.SshTransport
 import app.novalabs.rpcstudio.link.RpcError
 import app.novalabs.rpcstudio.link.quote
 import app.novalabs.rpcstudio.link.rnorm
@@ -66,6 +70,10 @@ class Session(app: Application) : AndroidViewModel(app) {
     var repo by mutableStateOf<List<RepoPkg>>(emptyList()); private set
     // Firmware
     var latest by mutableStateOf<Release?>(null); private set
+    // Wi-Fi: boards paired with this phone, and whether the open connection is one of them
+    var paired by mutableStateOf(loadPaired()); private set
+    var viaWifi by mutableStateOf<Paired?>(null); private set
+    private val ticker = Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "keepalive") }
 
     fun say(text: String, kind: Kind = Kind.INFO) { message = text to kind }
     fun chooseTheme(name: String) { theme = name; prefs.edit().putString("theme", name).apply() }
@@ -78,27 +86,36 @@ class Session(app: Application) : AndroidViewModel(app) {
 
     fun connect(device: UsbDevice) = open(device.productName ?: "the board") { UsbTransport(usb, device) }
 
+    /** A paired board, over Wi-Fi: SSH with this phone's key, to the host key pinned when it was paired. */
+    fun connectWifi(p: Paired) = open("${p.name} over Wi-Fi", wifi = p) {
+        SshTransport(p.host, p.port, p.user, phoneKey(), p.fingerprint)
+    }
+
     /** Debug builds only: a console relayed over TCP (tools/serial_relay.py), for the emulator. */
     fun connectTcp(host: String, port: Int) = open("$host:$port") { app.novalabs.rpcstudio.link.TcpTransport(host, port) }
 
-    private fun open(what: String, make: () -> app.novalabs.rpcstudio.link.Transport) {
+    private fun open(what: String, wifi: Paired? = null, make: () -> app.novalabs.rpcstudio.link.Transport) {
         if (conn != Conn.OFF) return
         conn = Conn.CONNECTING
         say("Connecting to $what...")
         worker.execute {
+            var t: app.novalabs.rpcstudio.link.Transport? = null
             try {
-                val t = make()
+                t = make()
                 val d = Device(t, sudoPassword = { askSudo() })
-                d.connect()
+                if (wifi != null) d.connectLinked() else d.connect()
                 dev = d
                 post {
                     hello = d.hello
                     cwd = d.cwd
+                    viaWifi = wifi
                     conn = Conn.ON
                     say("Connected: ${d.hello["os"] ?: "?"} on ${d.hello["board"] ?: "?"}.", Kind.OK)
                 }
                 refreshAll()
             } catch (e: Exception) {
+                // A failed connect leaves the port (or connection) open otherwise.
+                try { t?.close() } catch (_: Exception) { }
                 dev = null
                 post { conn = Conn.OFF; say(e.message ?: e.toString(), Kind.ERR) }
             }
@@ -109,7 +126,7 @@ class Session(app: Application) : AndroidViewModel(app) {
         worker.execute {
             try { dev?.close() } catch (_: Exception) { }
             dev = null
-            post { conn = Conn.OFF; status = null; say("Disconnected. The board is back at its own prompt.") }
+            post { conn = Conn.OFF; status = null; viaWifi = null; pairedFingerprint = null; say("Disconnected. The board is back at its own prompt.") }
         }
     }
 
@@ -117,7 +134,7 @@ class Session(app: Application) : AndroidViewModel(app) {
     private fun lost(why: String) {
         try { dev?.t?.close() } catch (_: Exception) { }
         dev = null
-        post { conn = Conn.OFF; status = null; say(why, Kind.WARN); scan() }
+        post { conn = Conn.OFF; status = null; viaWifi = null; pairedFingerprint = null; say(why, Kind.WARN); scan() }
     }
 
     private fun askSudo(): String? {
@@ -141,7 +158,8 @@ class Session(app: Application) : AndroidViewModel(app) {
             try {
                 fn(d)
             } catch (e: DeviceGone) {
-                lost("The board went away (unplugged, or restarting). Plug it back in to reconnect.")
+                lost(if (viaWifi != null) "The connection to the board was lost (it restarted, or one of you left the Wi-Fi). Connect again from the start screen."
+                     else "The board went away (unplugged, or restarting). Plug it back in to reconnect.")
             } catch (e: RpcError) {
                 post { say(e.message ?: "failed", Kind.ERR) }
             } catch (e: Exception) {
@@ -308,9 +326,88 @@ class Session(app: Application) : AndroidViewModel(app) {
         if (r == null) lost("The board is restarting.") else post { say(r.text.trim(), Kind.ERR) }
     }
 
+    // --- Wi-Fi pairing ----------------------------------------------------------------------
+
+    /** This phone's SSH key: made the first time it is needed, kept in the app's own storage
+     *  (not backed up, not readable by other apps). */
+    @Synchronized private fun phoneKey(): SshKey {
+        val dir = getApplication<Application>().filesDir
+        val prv = java.io.File(dir, "ssh_key"); val pub = java.io.File(dir, "ssh_key.pub")
+        if (prv.exists() && pub.exists()) return SshKey(prv.readBytes(), pub.readText().trim())
+        val k = SshKey.generate("rpcortex-studio@" + (android.os.Build.MODEL ?: "android").replace(Regex("[^A-Za-z0-9_.-]"), "-"))
+        prv.writeBytes(k.private); pub.writeText(k.public + "\n")
+        return k
+    }
+
+    private fun loadPaired(): List<Paired> = try {
+        val a = org.json.JSONArray(prefs.getString("paired", "[]"))
+        (0 until a.length()).map { a.getJSONObject(it) }.map {
+            Paired(it.getString("name"), it.getString("host"), it.optInt("port", 22), it.getString("user"),
+                   it.getString("fingerprint"), it.optString("board"))
+        }
+    } catch (_: Exception) { emptyList() }
+
+    private fun savePaired(list: List<Paired>) {
+        val a = org.json.JSONArray()
+        for (p in list) a.put(JSONObject().put("name", p.name).put("host", p.host).put("port", p.port)
+            .put("user", p.user).put("fingerprint", p.fingerprint).put("board", p.board))
+        prefs.edit().putString("paired", a.toString()).apply()
+        paired = list
+    }
+
+    /** Pairing, over the USB connection: this phone's key goes into the account's authorized_keys,
+     *  and the board's address and SSH host key are kept. Pairing again refreshes the address. */
+    fun pairWifi() = job("pairing for Wi-Fi") { d ->
+        val p = Pairing.pair(d, phoneKey())
+        post {
+            savePaired(paired.filterNot { it.fingerprint == p.fingerprint && it.user == p.user } + p)
+            say("Paired: ${p.name} at ${p.host}. It is on the start screen under Wi-Fi.", Kind.OK)
+        }
+    }
+
+    /** Forget a board here, and take this phone's key off it when it is connected now. */
+    fun forget(p: Paired) {
+        val d = dev
+        val here = d != null && viaWifi == null && d.hello["user"] == p.user
+        savePaired(paired.filterNot { it == p })
+        if (here) job("taking this phone's key off the board") { dd ->
+            Pairing.unpair(dd, phoneKey())
+            post { say("Forgotten, and this phone's key is off ${p.name}.", Kind.OK) }
+        } else say("Forgotten here. Its key stays on the board until you remove it there (~/.ssh/authorized_keys) or forget it while connected over USB.")
+    }
+
+    fun setAddress(p: Paired, host: String) {
+        val h = host.trim()
+        if (h.isEmpty()) return
+        savePaired(paired.map { if (it == p) it.copy(host = h) else it })
+    }
+
+    fun isPaired(): Paired? {
+        val fp = pairedFingerprint ?: return null
+        return paired.firstOrNull { it.fingerprint == fp && it.user == hello["user"] }
+    }
+    /** The connected board's SSH fingerprint, read once per connection (for "already paired"). */
+    var pairedFingerprint by mutableStateOf<String?>(null); private set
+    fun readFingerprint() = job("reading the board's SSH key") { d ->
+        val fp = Regex("SHA256:[A-Za-z0-9+/]+").find(d.exec("ssh server fingerprint").text)?.value
+        post { pairedFingerprint = fp }
+    }
+
+    init {
+        // Over Wi-Fi the board ends link mode after 90 s with no request (a phone that walked
+        // away closes nothing); a PING every 30 s while idle keeps an open connection open.
+        ticker.scheduleWithFixedDelay({
+            if (viaWifi != null && dev != null && busy == null) worker.execute {
+                try { dev?.link?.ping() } catch (_: DeviceGone) {
+                    lost("The connection to the board was lost (it restarted, or one of you left the Wi-Fi). Connect again from the start screen.")
+                } catch (_: Exception) { }
+            }
+        }, 30, 30, java.util.concurrent.TimeUnit.SECONDS)
+    }
+
     override fun onCleared() {
         try { dev?.close() } catch (_: Exception) { }
-        worker.shutdownNow(); net.shutdownNow()
+        worker.shutdownNow(); net.shutdownNow(); ticker.shutdownNow()
     }
 
     companion object {

@@ -145,6 +145,8 @@ class Device(object):
                 return self
             if what == "login":
                 self._login()
+            if what == "busy":
+                raise RpcError("The board is already talking to another host tool (Studio on a phone over Wi-Fi, or another program on its console): one at a time. Close that one; a phone that has gone quiet is let go within 90 seconds.")
             # "link" (a stray frame) or nothing: go round again.
         raise RpcError("The device did not answer. Is the port right, and is the shell "
                        "running? 'rpc term' shows what it is doing.")
@@ -191,6 +193,8 @@ class Device(object):
                     return "hello", None
                 continue
             clean = strip_ansi(bytes(buf))
+            if b"Link mode is already running" in clean:
+                return "busy", None
             if b"'link' is not a command" in clean:
                 self._collect(self.timing.settle)       # and the prompt after it
                 return "old", None

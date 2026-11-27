@@ -3,6 +3,22 @@
 
 
 
+
+## v1.5.0, 2026-11-26
+
+### New
+
+- The Android app reaches a board over Wi-Fi. Pair it once while it is connected by USB (device tab, "pair for wi-fi"): the board takes the phone's own SSH key for that account, and the phone keeps the board's address and the fingerprint of its SSH key, read over the cable. From then on it is on the start screen under "over wi-fi", and connects with everything the cable gives: files, packages, firmware, health and commands. A board presenting any other key is refused before anything is sent. Needs the board on firmware v2.0.700 or later, on the same network, with its SSH server on (pairing turns it on). Forgetting a board while connected over USB also takes the phone's key off it.
+- The app's name on the phone is "RPC Studio", which fits under its icon.
+
+### Improved
+
+- `rpc` and the Android app say so when a board is already linked to another host tool (one at a time, across the console and Wi-Fi), instead of "the device did not answer".
+
+### Fixed
+
+- A connection that failed part way (the Android app) left the USB port open, so the next try could not open it.
+
 ## v1.4.0, 2026-11-26
 
 ### New
