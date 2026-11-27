@@ -20,7 +20,7 @@ from . import term as _term
 from . import transport
 from . import web as _web
 from .device import Device
-from .errors import LinkError, NotSupported, RpcError
+from .errors import DeviceGone, LinkError, NotSupported, RpcError
 from .link import Timing
 from .pkg import install_bytes
 from .progress import Progress
@@ -265,10 +265,21 @@ def cmd_term(ctx, a):
     return 0
 
 
+# Commands after which the board restarts by design: losing it then is the
+# command working, not failing.
+_RESTARTS = re.compile(r"(^|[;&|]\s*)(sudo\s+)?(reboot|restart|update\s+(online|from-file|install|rollback\s+--now))\b")
+
+
 def cmd_exec(ctx, a):
     line = " ".join(a.command)
     dev = ctx.device()
-    r = dev.exec(line, a.timeout)
+    try:
+        r = dev.exec(line, a.timeout)
+    except DeviceGone:
+        if _RESTARTS.search(line):
+            out("The board is restarting.")
+            return 0
+        raise
     _print_exec(r)
     if r.truncated:
         err("[output cut off at {} bytes by the device]".format(dev.link.exec_max if dev.link else "?"))
@@ -634,11 +645,20 @@ def cmd_flash(ctx, a):
             port = None
         if port is None:
             present = _flash.find_drives()
-            if not present:
+            if present:
+                drive = present[0]
+            elif _flash.bootsel_on_usb():
+                # Already in BOOTSEL, with no drive mounted (a headless machine):
+                # picotool below, or the drive if one mounts in a moment.
+                ctx.note("A board is waiting in BOOTSEL.")
+                drive = _flash.wait_for_drive(min(a.wait, 3))
+                if not drive and sys.platform.startswith("linux") and _flash.picotool_load(a.file):
+                    out("Loaded {} with picotool.".format(a.file))
+                    return 0
+            else:
                 err("No device found, and no BOOTSEL drive is mounted. Hold BOOTSEL while "
-                    "plugging the board in, then run this again with --no-reset.")
+                    "plugging the board in, then run this again.")
                 return 1
-            drive = present[0]
         else:
             ctx.note("Resetting {} into BOOTSEL (1200 baud)...".format(port))
             transport.touch_1200(port)

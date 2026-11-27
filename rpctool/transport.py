@@ -66,7 +66,7 @@ class Transport(object):
                 waiting = self.ser.in_waiting
                 data = self.ser.read(max(1, waiting))
             except self._gone as e:
-                raise DeviceGone("the port went away ({})".format(e))
+                raise DeviceGone("the board went away (it restarted, or was unplugged)")
             if data:
                 return bytes(data)
             if time.monotonic() >= deadline:
@@ -77,7 +77,7 @@ class Transport(object):
             self.ser.write(data)
             self.ser.flush()
         except self._gone as e:
-            raise DeviceGone("the port went away ({})".format(e))
+            raise DeviceGone("the board went away (it restarted, or was unplugged)")
 
     def discard_input(self):
         try:
